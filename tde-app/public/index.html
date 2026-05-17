@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Forestallers: Test Data Express</title>
+  <link rel="icon" type="image/png" href="/forestallers-logo-sidebar.png">
+  <link rel="apple-touch-icon" href="/forestallers-logo-sidebar.png">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div class="app-layout">
+    <aside class="sidebar">
+      <div class="brand-block">
+        <img class="brand-logo" src="/forestallers-logo-sidebar.png" alt="Forestallers">
+        <div>
+          <div class="brand-name">Test Data Express</div>
+          <div class="brand-org">Forestallers</div>
+          <div class="brand-subtitle">SAP object transfer</div>
+        </div>
+      </div>
+
+      <nav class="side-nav" aria-label="Tools">
+        <button id="newRunButton" class="side-nav__item active" type="button">New Run</button>
+      </nav>
+
+      <section class="history-panel" aria-label="Run history">
+        <div class="history-panel__header">
+          <div>
+            <p class="eyebrow">Run History</p>
+            <h2>Current & Last</h2>
+          </div>
+          <button id="historyRefreshButton" class="icon-button" type="button" aria-label="Refresh run history">Refresh</button>
+        </div>
+        <div id="historyList" class="history-list">
+          <div class="history-empty">No runs yet.</div>
+        </div>
+      </section>
+    </aside>
+
+    <main class="app-shell">
+      <header class="app-header">
+        <div>
+          <p class="eyebrow">SAP Test Data Express</p>
+          <h1>Forestallers: Test Data Express</h1>
+          <p class="header-copy">Transfer selected SAP business object data across systems and track generated keys, table writes, and validation results.</p>
+        </div>
+        <div class="header-actions">
+          <button id="themeToggle" class="theme-toggle" type="button" aria-label="Switch to dark mode" aria-pressed="false">
+            <span class="theme-toggle__track" aria-hidden="true">
+              <span class="theme-toggle__thumb"></span>
+            </span>
+            <span id="themeToggleLabel">Light</span>
+          </button>
+          <div id="healthBadge" class="health-badge">Ready</div>
+        </div>
+      </header>
+
+      <section class="workspace">
+        <form id="transferForm" class="control-panel">
+          <fieldset>
+            <legend>System Settings</legend>
+            <div class="field-grid">
+              <label>
+                Source System
+                <select id="sourceSystem" name="sourceSystem" required></select>
+              </label>
+              <label>
+                Target System
+                <select id="targetSystem" name="targetSystem" required></select>
+              </label>
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend>Object Selection</legend>
+            <div class="field-grid">
+              <label>
+                Object Type
+                <select id="objectType" name="objectType" required></select>
+              </label>
+              <label>
+                <span id="objectIdLabel">Object ID</span>
+                <input id="objectId" name="objectId" type="text" placeholder="Enter object ID" autocomplete="off" required>
+              </label>
+            </div>
+          </fieldset>
+
+          <fieldset class="privacy-fieldset">
+            <legend>🔒 Data Privacy</legend>
+            <label class="toggle-label" for="maskPhoneNumbers">
+              <span class="toggle-label__text">
+                Mask Phone Numbers
+                <span class="toggle-label__hint">Replaces digits after the area code with *** before transfer</span>
+              </span>
+              <span class="toggle-switch">
+                <input id="maskPhoneNumbers" name="maskPhoneNumbers" type="checkbox" class="toggle-switch__input">
+                <span class="toggle-switch__track" aria-hidden="true">
+                  <span class="toggle-switch__thumb"></span>
+                </span>
+              </span>
+            </label>
+          </fieldset>
+
+          <fieldset id="syntheticOptionsPanel" class="synthetic-options-panel" hidden>
+            <legend>⚗ Synthetic Options</legend>
+            <div class="field-grid">
+              <label>
+                Rows to Generate
+                <input id="generateCount" name="generateCount" type="number" min="1" max="10000" value="100" placeholder="100">
+              </label>
+              <label>
+                Sampling Mode
+                <select id="sampleMode" name="sampleMode">
+                  <option value="top">Top N rows (default)</option>
+                  <option value="random">Random Sampling</option>
+                  <option value="range">Row Range</option>
+                </select>
+              </label>
+            </div>
+            <div id="sampleTopOptions" class="field-grid sample-sub-options">
+              <label>
+                Sample Size (rows to learn from)
+                <input id="sampleTopCount" name="sampleTopCount" type="number" min="1" max="5000" value="500" placeholder="500">
+              </label>
+            </div>
+            <div id="sampleRandomOptions" class="field-grid sample-sub-options" hidden>
+              <label>
+                Random Sample Size
+                <input id="sampleRandomCount" name="sampleRandomCount" type="number" min="1" max="5000" value="200" placeholder="200">
+              </label>
+            </div>
+            <div id="sampleRangeOptions" class="field-grid sample-sub-options" hidden>
+              <label>
+                From Row
+                <input id="sampleRangeFrom" name="sampleRangeFrom" type="number" min="0" value="0" placeholder="0">
+              </label>
+              <label>
+                To Row
+                <input id="sampleRangeTo" name="sampleRangeTo" type="number" min="1" value="200" placeholder="200">
+              </label>
+            </div>
+
+            <div class="sample-sub-options" style="border-top: 1px solid rgba(103,128,184,0.3); margin-top: 16px; padding-top: 14px; display: flex; justify-content: flex-end;">
+              <button id="confirmSyntheticButton" type="button" class="primary" style="background: linear-gradient(135deg, #6780B8, #46b4c8); min-width: 200px;">
+                ▶ Run Synthetic Transfer
+              </button>
+            </div>
+          </fieldset>
+
+          <section class="actions" aria-label="Actions">
+            <button id="previewButton" type="button">Preview</button>
+            <button id="synthesizeButton" type="button" class="secondary" style="border: 1px solid #4F556A;">Synthesize Data</button>
+            <button id="runButton" type="button" class="primary">Run Transfer</button>
+            <button id="runSyntheticButton" type="button" class="primary" style="background-color: #6780B8;">Synthetic Transfer</button>
+            <button id="downloadSyntheticButton" type="button" class="secondary" style="border: 1px solid #2ECC71; color: #2ECC71;" title="Generate synthetic data and download as CSV">⬇ Download Synthetic CSV</button>
+          </section>
+
+        </form>
+
+        <section class="result-panel" aria-live="polite">
+          <div class="result-header">
+            <div>
+              <p class="eyebrow">Results</p>
+              <h2>Transfer Output</h2>
+            </div>
+            <div id="loadingIndicator" class="loading" hidden>
+              <span class="spinner"></span>
+              Processing
+            </div>
+          </div>
+          <div id="statusMessage" class="status-message">Enter an object ID and run a preview.</div>
+          <div id="resultSummary" class="result-summary" hidden></div>
+          <details class="raw-response">
+            <summary>Raw response</summary>
+            <pre id="resultOutput">{}</pre>
+          </details>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,48 @@
+[
+  {
+    "traceId": "TRANSFER_1778947776402_PI3ZM3",
+    "status": "SUCCESS",
+    "startedAt": "2026-05-16T16:09:36.402Z",
+    "completedAt": "2026-05-16T16:10:33.048Z",
+    "sourceSystem": "MOCK_SYS",
+    "targetSystem": "MOCK_SYS",
+    "objectType": "SALES_DOCUMENT",
+    "sourceObjectId": "0000000002",
+    "objectId": "0000000002",
+    "synthetic": true,
+    "generatedIdRange": "9914943799 to 9914943948",
+    "pkField": "VBELN",
+    "generatedKeys": [],
+    "results": [
+      {
+        "table": "VBAK",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 150,
+        "succeeded": 150
+      }
+    ]
+  },
+  {
+    "traceId": "TRANSFER_1778855087330_H9B8BB",
+    "status": "SUCCESS",
+    "startedAt": "2026-05-15T14:24:47.330Z",
+    "completedAt": "2026-05-15T14:25:33.873Z",
+    "sourceSystem": "MOCK_SYS",
+    "targetSystem": "MOCK_SYS",
+    "objectType": "SALES_DOCUMENT",
+    "sourceObjectId": "0000000002",
+    "objectId": "0000000002",
+    "synthetic": true,
+    "generatedIdRange": "9974464344 to 9974464363",
+    "pkField": "VBELN",
+    "generatedKeys": [],
+    "results": [
+      {
+        "table": "VBAK",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 20,
+        "succeeded": 20
+      }
+    ]
+  }
+]

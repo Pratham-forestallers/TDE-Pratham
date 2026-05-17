@@ -1,0 +1,29 @@
+---
+applications:
+  - name: tde-app
+    memory: 512M
+    instances: 1
+    buildpacks:
+      - nodejs_buildpack
+    command: npm start
+    services:
+      - destination-service
+      # Bind this only when using OnPremise destinations through Cloud Connector.
+      - connectivity-dp
+    env:
+      NODE_ENV: production
+      # Optional: set a prefix such as TDE_ to show only matching destinations.
+      TDE_DESTINATION_PREFIX: ""
+      TDE_ODATA_SERVICE_PATH: /sap/opu/odata/FDE/TDE_GEN_SRV/
+      TDE_ODATA_FETCH_ENTITY_SET: FetchDataSet
+      TDE_ODATA_INSERT_ENTITY_SET: InsertDataSet
+      TDE_ODATA_REQUEST_ID_FIELD: RequestId
+      TDE_ODATA_FETCH_REQUEST_PAYLOAD_FIELD: Payload
+      TDE_ODATA_INSERT_REQUEST_PAYLOAD_FIELD: Payload
+      TDE_ODATA_RESPONSE_PAYLOAD_FIELD: Payload
+      TDE_ODATA_CSRF_MODE: required
+      TDE_ODATA_CSRF_TOKEN_PATHS: "FetchDataSet, InsertDataSet, NumberRangeSet, , $metadata"
+      TDE_ODATA_DEFAULT_ROWS: 5000
+      TDE_PAYLOAD_TABLE_FIELD: table
+      TDE_PAYLOAD_WHERE_CLAUSE_FIELD: where
+      TDE_PAYLOAD_ROWS_FIELD: rows

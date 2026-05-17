@@ -1,0 +1,35 @@
+{
+  "name": "tde-app",
+  "version": "1.0.0",
+  "description": "Test Data Express web application for SAP OData based business object transfer.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "connector:test": "node tde-connector/test.js",
+    "generate:object-structure-config": "node scripts/generateObjectStructureConfig.js"
+  },
+  "keywords": [
+    "sap",
+    "odata",
+    "btp",
+    "cloud-foundry",
+    "test-data-express"
+  ],
+  "author": "",
+  "license": "UNLICENSED",
+  "private": true,
+  "dependencies": {
+    "axios": "^1.7.9",
+    "body-parser": "^1.20.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.9"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
