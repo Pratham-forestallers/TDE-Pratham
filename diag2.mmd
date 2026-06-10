@@ -1,0 +1,27 @@
+sequenceDiagram
+    participant Node as Node.js Orchestrator
+    participant ML as Python ML Engine
+    participant SAP as SAP System
+
+    Node->>SAP: Fetch "Anchor" Orders (VBAK)
+    SAP-->>Node: Return Real Orders
+    Node->>SAP: Pre-flight Check (KNVV)
+    Note over Node,SAP: Verify anchors belong to valid<br/>Sales Area (VKORG/VTWEG/SPART)
+    
+    Node->>ML: Send Valid Anchors for ML Synthesis
+    Note over ML: Apply KDE / PCA / SMOTE<br/>Generate new NETWR, Dates, text
+    ML-->>Node: Return Synthesized VBAK Headers
+    
+    Note over Node: 1. Restamp KUNNR (Customer) to Anchor<br/>2. Fix Chronological Dates (GUEBG <= GUEEN)<br/>3. Assign Unique ID (99xxxxxxxx)
+    
+    Node->>SAP: Push Synthetic VBAK Headers
+    
+    Node->>SAP: Fetch Anchor Child Tables (VBAP, VBPA)
+    Note over Node: Clone child tables exactly to<br/>preserve Ship-To/Bill-To integrity
+    Note over Node: Scale VBAP Item Net Values to<br/>match ML-generated Header Net Value
+    
+    Node->>SAP: Push Scaled Child Tables
+    
+    Node->>SAP: Fetch PRCD_ELEMENTS (Pricing)
+    Note over Node: Scale Pricing Conditions<br/>(KWERT, KAWRT, KBETR)
+    Node->>SAP: Push Scaled Pricing Conditions

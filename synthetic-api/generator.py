@@ -186,10 +186,16 @@ def apply_constraints(synth_df: pd.DataFrame, orig_df: pd.DataFrame, categorical
                 is_pk = True
 
         if is_pk and len(unique_vals) > 0:
-            keys, actual_base = generate_unique_keys(orig_df[col], n, base_offset)
+            # KNUMV is a unique secondary key - give it its own independent random offset
+            # to prevent collision with VBELN which shares the same base_offset range
+            if 'KNUMV' in col.upper():
+                knumv_base = random.randint(9900000000, 9989999999 - n)
+                keys, _ = generate_unique_keys(orig_df[col], n, knumv_base)
+            else:
+                keys, actual_base = generate_unique_keys(orig_df[col], n, base_offset)
+                if base_offset is None:
+                    base_offset = actual_base
             synth_df[col] = keys
-            if base_offset is None:
-                base_offset = actual_base
         elif len(unique_vals) > 0:
             samples = np.random.choice(unique_vals, size=n, replace=True)
             # Mask phone fields only if masking is enabled

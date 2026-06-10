@@ -254,6 +254,22 @@ async function resolveDestination(destinationName) {
 
   if (process.env.MOCK_DESTINATION_URL && destinationName === 'MOCK_SYS') {
     const authHeader = 'Basic ' + Buffer.from(`${process.env.MOCK_SAP_USER || ''}:${process.env.MOCK_SAP_PASSWORD || ''}`).toString('base64');
+    const authTokens = [
+      {
+        type: 'BasicAuthentication',
+        value: authHeader,
+        http_header: { key: 'Authorization', value: authHeader }
+      }
+    ];
+
+    // Include sap-client header if configured, so requests target the correct SAP client
+    if (process.env.MOCK_SAP_CLIENT) {
+      authTokens.push({
+        type: 'SapClient',
+        http_header: { key: 'sap-client', value: process.env.MOCK_SAP_CLIENT }
+      });
+    }
+
     return {
       destinationConfiguration: {
         Name: 'MOCK_SYS',
@@ -262,13 +278,7 @@ async function resolveDestination(destinationName) {
         ProxyType: 'Internet',
         Authentication: 'BasicAuthentication'
       },
-      authTokens: [
-        {
-          type: 'BasicAuthentication',
-          value: authHeader,
-          http_header: { key: 'Authorization', value: authHeader }
-        }
-      ]
+      authTokens
     };
   }
 

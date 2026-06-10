@@ -315,10 +315,9 @@ h2 {
 }
 
 .workspace {
-  display: grid;
-  grid-template-columns: minmax(320px, 390px) minmax(0, 1fr);
+  display: flex;
+  flex-direction: column;
   gap: 24px;
-  align-items: start;
 }
 
 .control-panel,
@@ -339,6 +338,16 @@ fieldset {
   margin: 0 0 24px;
   padding: 0;
   border: 0;
+}
+
+.form-row-2 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 24px;
+}
+
+.form-row-2 fieldset {
+  margin-bottom: 0;
 }
 
 legend {
@@ -393,9 +402,18 @@ textarea {
 }
 
 .actions {
-  display: grid;
-  grid-template-columns: 1fr 1.4fr;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
   gap: 12px;
+  margin-top: 16px;
+}
+
+.actions button {
+  flex: 1 1 auto;
+  min-width: 150px;
+  max-width: 280px;
 }
 
 button {

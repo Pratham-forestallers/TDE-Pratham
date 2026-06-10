@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const { resolveDestination } = require('./destinationService');
 const {
   getSystemClient,
+  fetchTableData,
   fetchTableDataWithClient,
   pushTableDataWithClient,
   deleteTableDataWithClient,
@@ -1163,13 +1164,11 @@ async function executeTransfer(payload) {
             const rangeSize = Math.max(1, sampleTo - sampleFrom);
             url = `/${primaryTable}?$skip=${sampleFrom}&$top=${rangeSize}&$format=json`;
           } else if (sampleMode === 'random') {
-            // SAP OData doesn't support true random; we skip by a random offset
-            const totalApprox = 10000; // reasonable upper bound
+            const totalApprox = 10000;
             const maxSkip = Math.max(0, totalApprox - sampleCount);
             const randomSkip = Math.floor(Math.random() * maxSkip);
             url = `/${primaryTable}?$skip=${randomSkip}&$top=${sampleCount}&$format=json`;
           } else {
-            // top N
             url = `/${primaryTable}?$top=${sampleCount}&$format=json`;
           }
           const refResponse = await rawClient.get(url);
@@ -1179,117 +1178,494 @@ async function executeTransfer(payload) {
             logger.info(`Re-fetched ${fetched.length} reference rows (mode=${sampleMode})`, { primaryTable, url });
           }
         } catch (err) {
-          logger.warn(`Could not re-fetch reference rows (${err.message}), using already-fetched rows`);
+          logger.warn(`Could not re-fetch reference rows via GET (${err.message}), attempting POST fallback for generic API`);
+          try {
+             // Fallback for Generic API which uses FetchDataSet via POST
+             const rawClient = await getSystemClient(sourceSystem);
+             const fallbackCount = sampleMode === 'random' ? Math.max(1000, sampleCount * 2) : sampleCount;
+             
+             const fetchedRows = await fetchTableDataWithClient(
+                rawClient, sourceSystem, primaryTable, '__FETCH_ALL__', configKey, { rows: fallbackCount }
+             );
+             
+             if (fetchedRows && fetchedRows.length > 0) {
+                if (sampleMode === 'random') {
+                   // Shuffle and pick
+                   referenceRecords = fetchedRows.sort(() => 0.5 - Math.random()).slice(0, sampleCount);
+                } else if (sampleMode === 'range') {
+                   // Fallback for range: just slice
+                   const rangeSize = Math.max(1, sampleTo - sampleFrom);
+                   referenceRecords = fetchedRows.slice(sampleFrom, sampleFrom + rangeSize);
+                } else {
+                   referenceRecords = fetchedRows.slice(0, sampleCount);
+                }
+                logger.info(`Re-fetched ${referenceRecords.length} reference rows using Generic API POST fallback`);
+             }
+          } catch (fallbackErr) {
+             logger.warn(`Fallback POST re-fetch failed (${fallbackErr.message}), using already-fetched single row`);
+          }
         }
       }
-      // Step 2: Fetch the current MAX ID from the target system for "MAX+1" logic.
+
+      // Step 2: Fetch the current MAX synthetic VBELN from the target system.
+      // Query VBAK directly via FetchDataSet filtering only synthetic range >= 9900000000.
+      // This sees ALL previously inserted synthetic records and prevents key collisions.
       let maxId = 0;
-      let pkField = 'VBELN'; // Default for Sales Orders
+      let pkField = 'VBELN';
 
       try {
-        // Find PK field (skip system fields like MANDT/CLIENT)
-        const systemFields = ['MANDT', 'mandt', 'CLIENT', 'client'];
-        if (configKey === 'SALES_DOCUMENT') {
-          pkField = 'VBELN';
-        } else if (referenceRecords.length > 0) {
-          const fields = Object.keys(referenceRecords[0]);
-          pkField = fields.find(f => !systemFields.includes(f)) || fields[0];
+        const maxRows = await fetchTableData(
+          targetSystem,
+          'VBAK',
+          '__FETCH_ALL__',
+          configKey,
+          { where: "VBELN >= '9900000000'", rows: 5000 }
+        );
+
+        for (const row of (maxRows || [])) {
+          const vbeln = row.VBELN || row.vbeln || '';
+          const parsed = parseInt(vbeln, 10) || 0;
+          if (parsed > maxId) maxId = parsed;
         }
 
-        // Use standard SAP OData service path for reliable counting if known
-        let servicePathForMax = `/${primaryTable}`;
-        if (configKey === 'SALES_DOCUMENT') {
-          servicePathForMax = `/sap/opu/odata/sap/API_SALES_ORDER_SRV/A_SalesOrder`;
-        }
-
-        const rawTargetClient = await getRawClient(targetSystem);
-        const maxResponse = await rawTargetClient.get(`${servicePathForMax}?$top=1&$select=${pkField}&$orderby=${pkField} desc&$format=json`);
-        
-        const maxRecords = maxResponse.data?.d?.results || maxResponse.data?.value || [];
-        if (maxRecords.length > 0) {
-          const rawMax = maxRecords[0][pkField];
-          // Try to parse as int, ignoring leading zeros
-          maxId = parseInt(rawMax, 10) || 0;
-          logger.info(`Found current MAX ${pkField} in ${targetSystem}: ${maxId}`);
+        if (maxId > 0) {
+          logger.info(`Found current MAX synthetic VBELN in ${targetSystem}: ${maxId}`);
         }
       } catch (err) {
-        logger.warn(`Could not fetch MAX ID for ${primaryTable}, falling back to high-range: ${err.message}`);
+        logger.warn(`Could not fetch MAX synthetic VBELN via VBAK FetchDataSet: ${err.message}. Will use random offset.`);
       }
 
-      // Step 3: Generate brand-new synthetic records with unique PKs via Python ML API.
-      const numToGenerate = generateCount; // use the user-specified count
-      const baseOffset = maxId > 0 ? maxId + 1 : null;
-      const { records: syntheticRecords, actualBaseOffset } = await syntheticDataClient.requestSyntheticData(
+      // Step 3: Generate VBAK (root/Type A table) synthetic records via Python ML engine.
+      // Use incremental 99* generation. If maxId is already in the 99* range, increment it.
+      // Otherwise, start exactly at 9900000000.
+      let baseOffsetToUse = maxId > 0 ? maxId + 1 : null;
+      if (baseOffsetToUse !== null && baseOffsetToUse < 9900000000) {
+          baseOffsetToUse = null; // Let python randomize it if maxId is suspiciously low
+      }
+      
+      const numToGenerate = generateCount;
+
+      // Pre-select one anchor source record per synthetic order BEFORE ML generation.
+      // These anchors ensure the generated VBAK has a coherent customer+sales-area combo.
+      // Filter to Standard Orders (AUART='TA') so all anchors have proper item data.
+      const standardOrderRefs = referenceRecords.filter(r => {
+        const auart = r.AUART || r.auart || r.Auart || '';
+        return auart.trim().toUpperCase() === 'TA';
+      });
+      let qualifiedRefs = standardOrderRefs.length > 0 ? standardOrderRefs : referenceRecords;
+
+      // --- KNVV Validation: only keep anchors whose KUNNR is actually extended to the sales area ---
+      // This prevents "Sold-to party not maintained for sales area" errors in VA03.
+      try {
+        // Detect the sales area from the first qualified ref
+        const sampleRef = qualifiedRefs[0] || {};
+        const vkorg = sampleRef.VKORG || sampleRef.vkorg || '';
+        const vtweg = sampleRef.VTWEG || sampleRef.vtweg || '';
+        const spart = sampleRef.SPART || sampleRef.spart || '00';
+
+        if (vkorg && vtweg) {
+          const knvvWhere = `VKORG = '${vkorg}' AND VTWEG = '${vtweg}' AND SPART = '${spart}'`;
+          const knvvRows = await fetchTableData(targetSystem, 'KNVV', '__FETCH_ALL__', configKey, {
+            where: knvvWhere,
+            rows: 2000
+          });
+          const validKunnrs = new Set(
+            (knvvRows || []).map(r => (r.KUNNR || r.kunnr || '').trim()).filter(Boolean)
+          );
+          if (validKunnrs.size > 0) {
+            const knvvFiltered = qualifiedRefs.filter(r => {
+              const kunnr = (r.KUNNR || r.kunnr || '').trim();
+              return validKunnrs.has(kunnr);
+            });
+            if (knvvFiltered.length > 0) {
+              qualifiedRefs = knvvFiltered;
+              logger.info(`KNVV filter: ${knvvFiltered.length} anchors confirmed valid for sales area ${vkorg}/${vtweg}/${spart} (from ${validKunnrs.size} valid customers)`);
+            } else {
+              logger.warn(`KNVV filter found no overlap — using unfiltered pool. Check customer master for ${vkorg}/${vtweg}/${spart}.`);
+            }
+          }
+        }
+      } catch (knvvErr) {
+        logger.warn(`KNVV pre-flight lookup failed (${knvvErr.message}), proceeding without customer validation`);
+      }
+      // -----------------------------------------------------------------------------------------
+
+      const shuffledQualified = [...qualifiedRefs].sort(() => 0.5 - Math.random());
+      // selectedAnchors[i] is the source record whose key fields will be used for syntheticRootRecords[i]
+      const selectedAnchors = Array.from({ length: numToGenerate }, (_, i) =>
+        shuffledQualified[i % shuffledQualified.length]
+      );
+
+      logger.info(`Template pool: ${qualifiedRefs.length} qualifying anchors (TA + KNVV-validated)`);
+
+
+      const { records: syntheticRootRecords, actualBaseOffset } = await syntheticDataClient.requestSyntheticData(
         primaryTable,
         referenceRecords,
         numToGenerate,
-        baseOffset,
-        maskPhoneNumbers  // pass user preference to Python ML engine
+        baseOffsetToUse,
+        maskPhoneNumbers
       );
 
-      if (syntheticRecords && syntheticRecords.length > 0) {
-        logger.info(`Pushing ${syntheticRecords.length} NEW synthetic records to target`, { targetSystem, table: primaryTable });
+      // Overlay coherence-critical fields from each anchor record onto the ML-generated VBAK.
+      // This guarantees that KUNNR is always valid for the VKORG/VTWEG/SPART combination.
+      const COHERENCE_FIELDS = ['KUNNR', 'kunnr', 'VKORG', 'vkorg', 'VTWEG', 'vtweg', 'SPART', 'spart',
+                                 'AUART', 'auart', 'VBTYP', 'vbtyp', 'BUKRS', 'bukrs', 'WAERK', 'waerk'];
+      if (syntheticRootRecords && syntheticRootRecords.length > 0) {
+        syntheticRootRecords.forEach((rec, i) => {
+          const anchor = selectedAnchors[i];
+          if (!anchor) return;
+          for (const field of COHERENCE_FIELDS) {
+            if (anchor[field] !== undefined && anchor[field] !== null && anchor[field] !== '') {
+              rec[field] = anchor[field];
+            }
+          }
 
-        // Step 3: Push the synthetic records to the target system as NEW additional records.
-        // These are NOT replacements — the original records in QS3 remain untouched.
-        const targetClient2 = await getSystemClient(targetSystem);
-        await warmCsrfToken(targetClient2);
-        const pushResult = await pushTableDataWithClient(targetClient2, targetSystem, primaryTable, syntheticRecords);
+          // Ensure 'from' dates are smaller than or equal to 'to' dates
+          // Since the ML generates columns independently, validity periods can get reversed
+          const datePairs = [
+            { from: 'GUEBG', to: 'GUEEN' },
+            { from: 'ANGDT', to: 'BNDDT' },
+            { from: 'KDATB', to: 'KDATE' }
+          ];
 
-        const resolvedBase = actualBaseOffset || baseOffset;
-        const idRange = (resolvedBase !== null && resolvedBase !== undefined)
-          ? `${resolvedBase} to ${resolvedBase + syntheticRecords.length - 1}`
-          : 'N/A';
-        logger.info(`Generated ID range: ${idRange} (pkField=${pkField}, actualBaseOffset=${actualBaseOffset})`);
-
-        const syntheticResult = {
-          success: true,
-          synthetic: true,
-          pkField,
-          objectType: configKey,
-          objectId: normalizedObjectId,
-          sourceSystem,
-          targetSystem,
-          traceId,
-          startedAt,
-          completedAt: new Date().toISOString(),
-          syntheticRowsGenerated: syntheticRecords.length,
-          syntheticRowsPushed: pushResult.succeeded,
-          generatedIdRange: idRange,
-          note: `${syntheticRecords.length} new synthetic ${primaryTable} records were transferred to ${targetSystem} (Range: ${idRange}). Original data in ${sourceSystem} is untouched.`,
-          results: [{
-            table: primaryTable,
-            status: pushResult.succeeded > 0 ? 'SYNTHETIC_INSERTED' : 'FAILED',
-            attempted: pushResult.attempted,
-            succeeded: pushResult.succeeded,
-          }]
-        };
-
-        // Record to run history so the sidebar panel shows this run
-        recordRunHistory({
-          traceId,
-          status: pushResult.succeeded > 0 ? 'SUCCESS' : 'FAILED',
-          startedAt,
-          completedAt: syntheticResult.completedAt,
-          sourceSystem,
-          targetSystem,
-          objectType: configKey,
-          sourceObjectId: normalizedObjectId,
-          objectId: normalizedObjectId,
-          synthetic: true,
-          generatedIdRange: idRange,
-          pkField,
-          generatedKeys: [],
-          results: syntheticResult.results
+          for (const pair of datePairs) {
+            const fromKey = Object.keys(rec).find(k => k.toUpperCase() === pair.from);
+            const toKey = Object.keys(rec).find(k => k.toUpperCase() === pair.to);
+            
+            if (fromKey && toKey) {
+               const fromVal = rec[fromKey];
+               const toVal = rec[toKey];
+               
+               // SAP dates are YYYYMMDD or /Date(...)/. String comparison works for both to determine order.
+               // Ignore '00000000' which means no end date
+               if (fromVal && toVal && typeof fromVal === 'string' && typeof toVal === 'string' && toVal !== '00000000') {
+                  if (fromVal > toVal) {
+                     // Swap them
+                     rec[fromKey] = toVal;
+                     rec[toKey] = fromVal;
+                  }
+               }
+            }
+          }
         });
-
-        return syntheticResult;
+        logger.info('Overlaid coherence fields (KUNNR/VKORG/VTWEG/SPART/AUART) from anchor records onto synthetic VBAK');
       }
-    } catch (err) {
-      logger.error('Synthetic data transfer failed', { error: err.message });
+
+      // Lock in the actual base offset used (Python may have chosen a random 99xxxxxxxx base)
+      const resolvedBase = actualBaseOffset ?? null;
+
+      // Compute ID range for reporting
+      let idRange = 'N/A';
+      if (resolvedBase !== null && resolvedBase !== undefined && syntheticRootRecords.length > 0) {
+        idRange = `${resolvedBase} to ${resolvedBase + syntheticRootRecords.length - 1}`;
+      }
+      logger.info(`Generated ID range: ${idRange} (pkField=${pkField}, actualBaseOffset=${actualBaseOffset})`);
+
+      // Setup target client (warm CSRF once, reuse for all table pushes)
+      const targetClient2 = await getSystemClient(targetSystem);
+      await warmCsrfToken(targetClient2);
+
+      const allTableResults = [];
+
+      // Step 4: Push root table (VBAK) records to target.
+      if (syntheticRootRecords && syntheticRootRecords.length > 0) {
+        logger.info(`Pushing ${syntheticRootRecords.length} NEW synthetic ${primaryTable} records to target`, { targetSystem });
+        const rootPushResult = await pushTableDataWithClient(targetClient2, targetSystem, primaryTable, syntheticRootRecords);
+        allTableResults.push({
+          table: primaryTable,
+          status: rootPushResult.succeeded > 0 ? 'SYNTHETIC_INSERTED' : 'FAILED',
+          attempted: rootPushResult.attempted,
+          succeeded: rootPushResult.succeeded
+        });
+      }
+
+      // Step 4.5: Fetch dynamic child templates
+      const childTemplates = [];
+      const templateCount = Math.min(10, referenceRecords.length);
+      if (templateCount > 0) {
+        logger.info(`Fetching ${templateCount} dynamic child templates for synthetic generation`);
+        
+        // Use the same anchor records already selected before ML generation.
+        // This ensures child templates match the header's KUNNR/VKORG/VTWEG/SPART.
+        const selectedRefs = selectedAnchors.slice(0, templateCount);
+        const fallbackPk = definition.keyField || 'OBJECT_ID';
+        
+        const fetchPromises = selectedRefs.map(async (ref) => {
+          const vbeln = ref[fallbackPk] || ref.SalesOrder || ref.VBELN || ref.vbeln;
+          if (vbeln) {
+             try {
+                // Fetch the full relational tree for this reference record
+                const { tables } = await fetchConfiguredTables(
+                  sourceClient, sourceSystem, configKey, String(vbeln), definition
+                );
+                // Slice(1) to remove VBAK, keeping only child tables
+                return tables.slice(1);
+             } catch (err) {
+                logger.warn(`Failed to fetch child template for ${vbeln}: ${err.message}`);
+                return null;
+             }
+          }
+          return null;
+        });
+        
+        const results = await Promise.all(fetchPromises);
+        for (const res of results) {
+           if (res && res.length > 0) childTemplates.push(res);
+        }
+      }
+      
+      // Fallback: if dynamic fetching failed, just use the single UI objectId child tables
+      if (childTemplates.length === 0) {
+         childTemplates.push(fetchedSourceTables.slice(1));
+      }
+
+      // Step 5: Populate Type B & C child tables using dynamic round-robin strategy.
+      // Tables that are virtual/computed and should never be directly inserted.
+      const SKIP_INSERT_TABLES = new Set(['SALESDOC_CNT', 'PRCD_ELEMENTS', 'VBFA']);
+      const VBELV_TABLE = 'VBFA';
+
+      const allSyntheticChildRecordsByTable = {}; // table -> records[]
+      const tableOrder = []; // maintain insertion order
+      
+      for (let orderIdx = 0; orderIdx < numToGenerate; orderIdx++) {
+         const syntheticVbeln = String(resolvedBase + orderIdx).padStart(10, '0');
+         
+         // Round-robin selection of a child template
+         const templateTables = childTemplates[orderIdx % childTemplates.length];
+         
+         for (const tableEntry of templateTables) {
+            if (!tableEntry.records || tableEntry.records.length === 0) continue;
+            if (tableEntry.status === 'SKIPPED') continue;
+            if (SKIP_INSERT_TABLES.has(tableEntry.table)) continue;
+            if (resolvedBase === null || resolvedBase === undefined) continue;
+            
+            if (!allSyntheticChildRecordsByTable[tableEntry.table]) {
+               allSyntheticChildRecordsByTable[tableEntry.table] = [];
+               tableOrder.push(tableEntry.table);
+            }
+            
+            const isVbfa = tableEntry.table === VBELV_TABLE;
+            
+            for (const sourceRec of tableEntry.records) {
+               const rec = { ...sourceRec };
+               const rootRec = syntheticRootRecords[orderIdx];
+               
+               // Critical fields that must be identical between Header and Child tables
+               // Removed 'KUNNR' because syncing it forces all VBPA partner functions (Ship-To, Bill-To, etc.)
+               // to take the Sold-To's customer ID, which breaks VA03 partner resolution.
+               const SYNC_FIELDS = new Set(['WAERK', 'VKORG', 'VTWEG', 'SPART', 'KNUMV', 'BUKRS_VF', 'BUKRS', 'AUART', 'VBTYP']);
+               
+               // Replace the FK field(s) referencing the sales-order VBELN and sync critical fields
+               for (const key of Object.keys(rec)) {
+                 const upperKey = key.toUpperCase();
+                 if (isVbfa) {
+                   if (upperKey === 'VBELV') rec[key] = syntheticVbeln;
+                   if (upperKey === 'RUUID') delete rec[key];
+                 } else {
+                   if (upperKey === 'VBELN') rec[key] = syntheticVbeln;
+                 }
+                 
+                 // Sync critical header values to child items so SAP GUI doesn't reject the Frankenstein document
+                 if (SYNC_FIELDS.has(upperKey) && rootRec) {
+                    const rootKey = Object.keys(rootRec).find(k => k.toUpperCase() === upperKey);
+                    if (rootKey && rootRec[rootKey] !== undefined && rootRec[rootKey] !== null) {
+                       rec[key] = rootRec[rootKey];
+                    }
+                 }
+                 
+                 // Scale item monetary amounts (NETWR, NETPR, WAVWR) to match the ML-generated Header NETWR
+                 const anchor = selectedAnchors[orderIdx];
+                 const anchorNetwr = anchor ? parseFloat(anchor.NETWR || anchor.netwr || 0) : 0;
+                 const syntheticNetwr = rootRec ? parseFloat(rootRec.NETWR || rootRec.netwr || 0) : 0;
+                 if (anchorNetwr > 0 && syntheticNetwr > 0 && anchorNetwr !== syntheticNetwr) {
+                    const scaleFactor = syntheticNetwr / anchorNetwr;
+                    if (['NETWR', 'NETPR', 'WAVWR'].includes(upperKey)) {
+                       const val = parseFloat(rec[key] || 0);
+                       rec[key] = Math.round(val * scaleFactor * 100) / 100;
+                    }
+                 }
+               }
+               
+               allSyntheticChildRecordsByTable[tableEntry.table].push(rec);
+            }
+         }
+      }
+      
+      // Push each aggregated child table individually
+      for (const tableName of tableOrder) {
+         const childRecords = allSyntheticChildRecordsByTable[tableName];
+         if (!childRecords || childRecords.length === 0) continue;
+         
+         logger.info(`Pushing ${childRecords.length} dynamic synthetic child records for ${tableName}`, { targetSystem, table: tableName });
+         
+         try {
+           const childPushResult = await pushTableDataWithClient(targetClient2, targetSystem, tableName, childRecords);
+           allTableResults.push({
+             table: tableName,
+             status: childPushResult.succeeded > 0 ? 'SYNTHETIC_INSERTED' : 'FAILED',
+             attempted: childPushResult.attempted,
+             succeeded: childPushResult.succeeded
+           });
+         } catch (childErr) {
+           logger.warn(`Synthetic child table push failed for ${tableName} — continuing with other tables`, { error: childErr.message });
+           allTableResults.push({
+             table: tableName,
+             status: 'FAILED',
+             attempted: childRecords.length,
+             succeeded: 0,
+             error: childErr.message
+           });
+         }
+      }
+
+      // Step 6: Clone KONV (pricing conditions) for each synthetic order.
+      // KONV is keyed by KNUMV (not VBELN) and lives outside SALES_DOCUMENT sub-tables.
+      // We clone the anchor's rows, restamp KNUMV, and SCALE all monetary amounts
+      // by the ratio (synthetic NETWR / anchor NETWR) so the Conditions tab totals
+      // always agree with the header net amount and item values.
+      try {
+        const konvByOrder = [];
+
+        await Promise.all(selectedAnchors.map(async (anchor, idx) => {
+          const anchorKnumv  = (anchor.KNUMV  || anchor.knumv  || '').trim();
+          const syntheticRec = syntheticRootRecords[idx];
+          const syntheticKnumv = syntheticRec
+            ? (syntheticRec.KNUMV || syntheticRec.knumv || '').trim()
+            : '';
+
+          if (!anchorKnumv || !syntheticKnumv || anchorKnumv === syntheticKnumv) return;
+
+          // --- Compute scale factor from NETWR ---
+          // anchor NETWR: read from the anchor VBAK record
+          const anchorNetwr    = parseFloat(anchor.NETWR    || anchor.netwr    || 0);
+          // synthetic NETWR: already ML-generated and overlaid on the synthetic VBAK
+          const syntheticNetwr = parseFloat(
+            syntheticRec.NETWR || syntheticRec.netwr || 0
+          );
+
+          // Default to 1 (no scaling) if either value is missing or zero
+          const scaleFactor = (anchorNetwr > 0 && syntheticNetwr > 0)
+            ? syntheticNetwr / anchorNetwr
+            : 1;
+
+          logger.info(
+            `KONV scale: anchor NETWR=${anchorNetwr}, synthetic NETWR=${syntheticNetwr}, ` +
+            `factor=${scaleFactor.toFixed(4)} (${anchorKnumv} → ${syntheticKnumv})`
+          );
+
+          try {
+            let fetchTableName = 'KONV';
+            let konvRows = await fetchTableData(
+              sourceSystem, fetchTableName, '__FETCH_ALL__', configKey,
+              { where: `KNUMV = '${anchorKnumv}'`, rows: 500 }
+            );
+
+            if (!konvRows || konvRows.length === 0) {
+              logger.info(`KONV returned 0 rows for ${anchorKnumv}. Trying PRCD_ELEMENTS...`);
+              fetchTableName = 'PRCD_ELEMENTS';
+              konvRows = await fetchTableData(
+                sourceSystem, fetchTableName, '__FETCH_ALL__', configKey,
+                { where: `KNUMV = '${anchorKnumv}'`, rows: 500 }
+              );
+            }
+
+            if (konvRows && konvRows.length > 0) {
+              const clonedRows = konvRows.map(row => {
+                const r = { ...row };
+
+                // 1. Restamp KNUMV to the synthetic order's condition number
+                for (const k of Object.keys(r)) {
+                  if (k.toUpperCase() === 'KNUMV') r[k] = syntheticKnumv;
+                }
+
+                // 2. Scale monetary amounts by the NETWR ratio
+                //    KRECH (calculation type) tells us how the condition is calculated:
+                //      'A' = percentage  → preserve KBETR (the %), scale KWERT only
+                //      'B' = fixed amt   → scale both KBETR and KWERT
+                //      'C' = quantity    → scale both KBETR and KWERT
+                //      others            → scale KWERT only (safe default)
+                if (scaleFactor !== 1) {
+                  const krech = (r.KRECH || r.krech || '').toUpperCase();
+                  const isPercentage = krech === 'A';
+
+                  // Scale KWERT (condition value = the currency amount shown in the grid)
+                  const kwertKey = Object.keys(r).find(k => k.toUpperCase() === 'KWERT');
+                  if (kwertKey !== undefined && r[kwertKey] !== undefined) {
+                    const scaled = parseFloat(r[kwertKey] || 0) * scaleFactor;
+                    r[kwertKey] = Math.round(scaled * 100) / 100; // round to 2 dp
+                  }
+
+                  // Scale KBETR (condition rate / base amount) only for non-percentage types
+                  if (!isPercentage) {
+                    const kbetrKey = Object.keys(r).find(k => k.toUpperCase() === 'KBETR');
+                    if (kbetrKey !== undefined && r[kbetrKey] !== undefined) {
+                      const scaled = parseFloat(r[kbetrKey] || 0) * scaleFactor;
+                      r[kbetrKey] = Math.round(scaled * 100) / 100;
+                    }
+                  }
+
+                  // Scale KWMENG (condition quantity basis) proportionally as well
+                  const kwmengKey = Object.keys(r).find(k => k.toUpperCase() === 'KWMENG');
+                  if (kwmengKey !== undefined && r[kwmengKey] !== undefined) {
+                    const scaled = parseFloat(r[kwmengKey] || 0) * scaleFactor;
+                    r[kwmengKey] = Math.round(scaled * 1000) / 1000;
+                  }
+                }
+
+                return r;
+              });
+
+              konvByOrder.push({ rows: clonedRows, syntheticKnumv, fetchTableName });
+              logger.info(
+                `${fetchTableName}: cloned+scaled ${clonedRows.length} condition rows ` +
+                `(${anchorKnumv} → ${syntheticKnumv}, factor=${scaleFactor.toFixed(4)})`
+              );
+            }
+          } catch (konvFetchErr) {
+            logger.warn(`KONV fetch failed for anchor KNUMV ${anchorKnumv}: ${konvFetchErr.message}`);
+          }
+        }));
+
+        const tablesToPush = [...new Set(konvByOrder.map(k => k.fetchTableName))];
+        for (const tableName of tablesToPush) {
+          const rowsToPush = konvByOrder.filter(k => k.fetchTableName === tableName).flatMap(k => k.rows);
+          if (rowsToPush.length > 0) {
+            logger.info(`Pushing ${rowsToPush.length} total condition rows to target table ${tableName}`);
+            try {
+              const konvPushResult = await pushTableDataWithClient(
+                targetClient2, targetSystem, tableName, rowsToPush
+              );
+              allTableResults.push({
+                table: tableName,
+                status: konvPushResult.succeeded > 0 ? 'SYNTHETIC_INSERTED' : 'FAILED',
+                attempted: konvPushResult.attempted,
+                succeeded: konvPushResult.succeeded,
+                failed: konvPushResult.failed
+              });
+            } catch (pushErr) {
+              logger.warn(`Failed to push conditions to ${tableName}: ${pushErr.message}`);
+            }
+          }
+        }
+      } catch (konvErr) {
+        logger.warn(`KONV cloning step failed: ${konvErr.message}`);
+      }
+
+      const totalGenerated = allTableResults.reduce((s, r) => s + (r.attempted || 0), 0);
+      const totalPushed = allTableResults.reduce((s, r) => s + (r.succeeded || 0), 0);
+      const tablesPopulated = allTableResults.filter(r => r.status === 'SYNTHETIC_INSERTED').length;
+
+      const synthKeys = [];
+      if (resolvedBase !== null && syntheticRootRecords && syntheticRootRecords.length > 0) {
+        for (let i = 0; i < syntheticRootRecords.length; i++) {
+          synthKeys.push({ field: pkField, targetValue: String(resolvedBase + i).padStart(10, '0') });
+        }
+      }
+
       recordRunHistory({
         traceId,
-        status: 'FAILED',
+        status: tablesPopulated > 0 ? 'SUCCESS' : 'FAILED',
         startedAt,
         completedAt: new Date().toISOString(),
         sourceSystem,
@@ -1297,11 +1673,33 @@ async function executeTransfer(payload) {
         objectType: configKey,
         sourceObjectId: normalizedObjectId,
         objectId: normalizedObjectId,
-        synthetic: true,
-        error: err.message,
-        generatedKeys: [],
-        results: []
+        generatedKeys: synthKeys,
+        results: allTableResults,
+        synthetic: true
       });
+
+      return {
+        success: true,
+        synthetic: true,
+        generatedKeys: synthKeys,
+        pkField,
+        objectType: configKey,
+        objectId: normalizedObjectId,
+        sourceSystem,
+        targetSystem,
+        traceId,
+        startedAt,
+        completedAt: new Date().toISOString(),
+        syntheticRowsGenerated: totalGenerated,
+        syntheticRowsPushed: totalPushed,
+        generatedIdRange: idRange,
+        tablesPopulated,
+        note: `Synthetic transfer complete. ${numToGenerate} order(s) generated in range ${idRange}. ${tablesPopulated}/${allTableResults.length} tables successfully populated (including child tables for VA03 display).`,
+        results: allTableResults
+      };
+
+    } catch (err) {
+      logger.error('Synthetic data transfer failed', { error: err.message });
       throw new AppError(`Synthetic data transfer failed: ${err.message}`, 500, { traceId });
     }
   }
@@ -1742,7 +2140,8 @@ async function rollbackRun(traceId) {
  * Generates synthetic data based on the real source rows for the given object
  * and returns it as a CSV string ready for download — no target system required.
  */
-async function generateSyntheticCsv({ sourceSystem, objectKey, objectType, objectId, numRecords = 100 }) {
+async function generateSyntheticCsv(params) {
+  const { sourceSystem, objectKey, objectType, objectId, generateCount = 100, maskPhoneNumbers = true } = params;
   const requestedObject = objectKey || objectType;
   const normalizedObjectId = normalizeObjectId(requestedObject, objectId);
   const { configKey, definition } = resolveObjectDefinition(requestedObject);
@@ -1750,7 +2149,7 @@ async function generateSyntheticCsv({ sourceSystem, objectKey, objectType, objec
   // Fetch real reference rows from source (QS3)
   const sourceClient = await getSystemClient(sourceSystem);
   await warmCsrfToken(sourceClient);
-  const { tables } = await fetchConfiguredTables(
+  const { tables: fetchedSourceTables } = await fetchConfiguredTables(
     sourceClient,
     sourceSystem,
     configKey,
@@ -1758,41 +2157,94 @@ async function generateSyntheticCsv({ sourceSystem, objectKey, objectType, objec
     definition
   );
 
-  const referenceRecords = tables.length > 0 ? tables[0].records : [];
-  const primaryTable = tables.length > 0 ? tables[0].table : configKey;
+  const referenceRecords = fetchedSourceTables.length > 0 ? fetchedSourceTables[0].records : [];
+  const primaryTable = fetchedSourceTables.length > 0 ? fetchedSourceTables[0].table : configKey;
 
   if (referenceRecords.length === 0) {
     throw new AppError(`No reference records found for ${definition.description} ${normalizedObjectId} in ${sourceSystem}.`, 404);
   }
 
-  logger.info(`Generating ${numRecords} synthetic records for download`, { primaryTable, referenceCount: referenceRecords.length });
+  logger.info(`Generating ${generateCount} synthetic records for download`, { primaryTable, referenceCount: referenceRecords.length });
 
-  // Call Python ML API
-  const syntheticRecords = await syntheticDataClient.requestSyntheticData(primaryTable, referenceRecords, numRecords);
+  // Call Python ML API with a dummy base offset for CSV output
+  const dummyBaseOffset = 9900000000;
+  const { records: syntheticRootRecords, actualBaseOffset } = await syntheticDataClient.requestSyntheticData(
+    primaryTable, 
+    referenceRecords, 
+    generateCount,
+    dummyBaseOffset,
+    maskPhoneNumbers
+  );
 
-  if (!syntheticRecords || syntheticRecords.length === 0) {
+  if (!syntheticRootRecords || syntheticRootRecords.length === 0) {
     throw new AppError('Synthetic data generation returned no records.', 500);
   }
 
-  // Convert to CSV
-  const headers = Object.keys(syntheticRecords[0]).filter(k => k !== '__metadata');
-  const csvRows = [
-    headers.join(','),
-    ...syntheticRecords.map(record =>
-      headers.map(h => {
-        const val = record[h] == null ? '' : String(record[h]);
-        // Wrap in quotes if it contains commas, quotes, or newlines
-        return val.includes(',') || val.includes('"') || val.includes('\n')
-          ? `"${val.replace(/"/g, '""')}"`
-          : val;
-      }).join(',')
-    )
-  ];
+  const resolvedBase = actualBaseOffset ?? dummyBaseOffset;
+  const AdmZip = require('adm-zip');
+  const zip = new AdmZip();
+
+  // Helper to format a table block to CSV
+  const buildCsvBlock = (tableName, rows) => {
+    if (!rows || rows.length === 0) return '';
+    const headers = Object.keys(rows[0]).filter(k => k !== '__metadata');
+    const lines = [
+      headers.join(','),
+      ...rows.map(record =>
+        headers.map(h => {
+          const val = record[h] == null ? '' : String(record[h]);
+          return val.includes(',') || val.includes('"') || val.includes('\n')
+            ? `"${val.replace(/"/g, '""')}"`
+            : val;
+        }).join(',')
+      )
+    ];
+    return lines.join('\n');
+  };
+
+  // Add the primary table (VBAK)
+  const rootCsv = buildCsvBlock(primaryTable, syntheticRootRecords);
+  if (rootCsv) zip.addFile(`${primaryTable}.csv`, Buffer.from(rootCsv, 'utf8'));
+
+  // Add all the child tables (Type B & C) cloned for each synthetic order
+  const VBELV_TABLE = 'VBFA';
+  const childTables = fetchedSourceTables.slice(1);
+  
+  for (const tableEntry of childTables) {
+    if (!tableEntry.records || tableEntry.records.length === 0) continue;
+    if (tableEntry.status === 'SKIPPED') continue;
+    
+    const isVbfa = tableEntry.table === VBELV_TABLE;
+    const childRecords = [];
+    
+    for (let orderIdx = 0; orderIdx < generateCount; orderIdx++) {
+      const syntheticVbeln = String(resolvedBase + orderIdx).padStart(10, '0');
+      
+      for (const sourceRec of tableEntry.records) {
+        const rec = { ...sourceRec };
+        for (const key of Object.keys(rec)) {
+          const upperKey = key.toUpperCase();
+          if (isVbfa) {
+            if (upperKey === 'VBELV') rec[key] = syntheticVbeln;
+            if (upperKey === 'RUUID') delete rec[key];
+          } else {
+            if (upperKey === 'VBELN') rec[key] = syntheticVbeln;
+          }
+        }
+        childRecords.push(rec);
+      }
+    }
+    
+    if (childRecords.length > 0) {
+      const childCsv = buildCsvBlock(tableEntry.table, childRecords);
+      if (childCsv) zip.addFile(`${tableEntry.table}.csv`, Buffer.from(childCsv, 'utf8'));
+    }
+  }
 
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-  const filename = `synthetic_${primaryTable}_${normalizedObjectId}_${timestamp}.csv`;
+  const filename = `synthetic_${primaryTable}_${normalizedObjectId}_${timestamp}.zip`;
 
-  return { csvContent: csvRows.join('\n'), filename };
+  return { zipBuffer: zip.toBuffer(), filename };
 }
 
 module.exports = {

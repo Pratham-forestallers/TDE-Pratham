@@ -1,7 +1,7 @@
 const axios = require('axios');
 const logger = require('../utils/logger');
 
-const SYNTHETIC_API_URL = process.env.SYNTHETIC_API_URL || 'http://localhost:8000';
+const SYNTHETIC_API_URL = process.env.SYNTHETIC_API_URL || 'http://localhost:8001';
 
 /**
  * Requests synthetic data generation from the Python microservice.

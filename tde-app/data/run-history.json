@@ -1,47 +1,1413 @@
 [
   {
-    "traceId": "TRANSFER_1778947776402_PI3ZM3",
+    "traceId": "TRANSFER_1781105955904_C3HDLB",
     "status": "SUCCESS",
-    "startedAt": "2026-05-16T16:09:36.402Z",
-    "completedAt": "2026-05-16T16:10:33.048Z",
+    "startedAt": "2026-06-10T15:39:15.904Z",
+    "completedAt": "2026-06-10T15:41:14.207Z",
     "sourceSystem": "MOCK_SYS",
     "targetSystem": "MOCK_SYS",
     "objectType": "SALES_DOCUMENT",
     "sourceObjectId": "0000000002",
     "objectId": "0000000002",
-    "synthetic": true,
-    "generatedIdRange": "9914943799 to 9914943948",
-    "pkField": "VBELN",
-    "generatedKeys": [],
+    "generatedKeys": [
+      {
+        "field": "VBELN",
+        "targetValue": "9962108487"
+      },
+      {
+        "field": "VBELN",
+        "targetValue": "9962108488"
+      },
+      {
+        "field": "VBELN",
+        "targetValue": "9962108489"
+      },
+      {
+        "field": "VBELN",
+        "targetValue": "9962108490"
+      },
+      {
+        "field": "VBELN",
+        "targetValue": "9962108491"
+      },
+      {
+        "field": "VBELN",
+        "targetValue": "9962108492"
+      },
+      {
+        "field": "VBELN",
+        "targetValue": "9962108493"
+      },
+      {
+        "field": "VBELN",
+        "targetValue": "9962108494"
+      },
+      {
+        "field": "VBELN",
+        "targetValue": "9962108495"
+      },
+      {
+        "field": "VBELN",
+        "targetValue": "9962108496"
+      }
+    ],
     "results": [
       {
         "table": "VBAK",
         "status": "SYNTHETIC_INSERTED",
-        "attempted": 150,
-        "succeeded": 150
+        "attempted": 10,
+        "succeeded": 10
+      },
+      {
+        "table": "VAKPA",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 40,
+        "succeeded": 40
+      },
+      {
+        "table": "VAPMA",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 9,
+        "succeeded": 9
+      },
+      {
+        "table": "VBAP",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 9,
+        "succeeded": 9
+      },
+      {
+        "table": "VBEP",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 16,
+        "succeeded": 16
+      },
+      {
+        "table": "VBKD",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 10,
+        "succeeded": 10
+      },
+      {
+        "table": "VBPA",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 40,
+        "succeeded": 40
+      },
+      {
+        "table": "PRCD_ELEMENTS",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 54,
+        "succeeded": 54
       }
-    ]
+    ],
+    "synthetic": true
   },
   {
-    "traceId": "TRANSFER_1778855087330_H9B8BB",
+    "traceId": "TRANSFER_1780935142433_1EFC39",
     "status": "SUCCESS",
-    "startedAt": "2026-05-15T14:24:47.330Z",
-    "completedAt": "2026-05-15T14:25:33.873Z",
+    "startedAt": "2026-06-08T16:12:22.433Z",
+    "completedAt": "2026-06-08T16:14:01.188Z",
     "sourceSystem": "MOCK_SYS",
     "targetSystem": "MOCK_SYS",
     "objectType": "SALES_DOCUMENT",
     "sourceObjectId": "0000000002",
     "objectId": "0000000002",
-    "synthetic": true,
-    "generatedIdRange": "9974464344 to 9974464363",
-    "pkField": "VBELN",
-    "generatedKeys": [],
+    "generatedKeys": [
+      {
+        "field": "VBELN",
+        "targetValue": "9962108484"
+      },
+      {
+        "field": "VBELN",
+        "targetValue": "9962108485"
+      },
+      {
+        "field": "VBELN",
+        "targetValue": "9962108486"
+      }
+    ],
     "results": [
       {
         "table": "VBAK",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 3,
+        "succeeded": 3
+      },
+      {
+        "table": "VAKPA",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 12,
+        "succeeded": 12
+      },
+      {
+        "table": "VAPMA",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 3,
+        "succeeded": 3
+      },
+      {
+        "table": "VBAP",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 3,
+        "succeeded": 3
+      },
+      {
+        "table": "VBEP",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 6,
+        "succeeded": 6
+      },
+      {
+        "table": "VBKD",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 3,
+        "succeeded": 3
+      },
+      {
+        "table": "VBPA",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 12,
+        "succeeded": 12
+      },
+      {
+        "table": "PRCD_ELEMENTS",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 18,
+        "succeeded": 18
+      }
+    ],
+    "synthetic": true
+  },
+  {
+    "traceId": "TRANSFER_1780933696125_8AWXLC",
+    "status": "SUCCESS",
+    "startedAt": "2026-06-08T15:48:16.125Z",
+    "completedAt": "2026-06-08T15:49:54.616Z",
+    "sourceSystem": "MOCK_SYS",
+    "targetSystem": "MOCK_SYS",
+    "objectType": "SALES_DOCUMENT",
+    "sourceObjectId": "0000000002",
+    "objectId": "0000000002",
+    "generatedKeys": [
+      {
+        "field": "VBELN",
+        "targetValue": "9962108481"
+      },
+      {
+        "field": "VBELN",
+        "targetValue": "9962108482"
+      },
+      {
+        "field": "VBELN",
+        "targetValue": "9962108483"
+      }
+    ],
+    "results": [
+      {
+        "table": "VBAK",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 3,
+        "succeeded": 3
+      },
+      {
+        "table": "VAKPA",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 12,
+        "succeeded": 12
+      },
+      {
+        "table": "VAPMA",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 4,
+        "succeeded": 4
+      },
+      {
+        "table": "VBAP",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 4,
+        "succeeded": 4
+      },
+      {
+        "table": "VBEP",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 8,
+        "succeeded": 8
+      },
+      {
+        "table": "VBKD",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 3,
+        "succeeded": 3
+      },
+      {
+        "table": "VBPA",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 12,
+        "succeeded": 12
+      },
+      {
+        "table": "PRCD_ELEMENTS",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 23,
+        "succeeded": 23
+      }
+    ],
+    "synthetic": true
+  },
+  {
+    "traceId": "TRANSFER_1780933031885_MSQY2N",
+    "status": "SUCCESS",
+    "startedAt": "2026-06-08T15:37:11.885Z",
+    "completedAt": "2026-06-08T15:38:48.726Z",
+    "sourceSystem": "MOCK_SYS",
+    "targetSystem": "MOCK_SYS",
+    "objectType": "SALES_DOCUMENT",
+    "sourceObjectId": "0000000002",
+    "objectId": "0000000002",
+    "generatedKeys": [
+      {
+        "field": "VBELN",
+        "targetValue": "9962108478"
+      },
+      {
+        "field": "VBELN",
+        "targetValue": "9962108479"
+      },
+      {
+        "field": "VBELN",
+        "targetValue": "9962108480"
+      }
+    ],
+    "results": [
+      {
+        "table": "VBAK",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 3,
+        "succeeded": 3
+      },
+      {
+        "table": "VAKPA",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 12,
+        "succeeded": 12
+      },
+      {
+        "table": "VAPMA",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 3,
+        "succeeded": 3
+      },
+      {
+        "table": "VBAP",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 3,
+        "succeeded": 3
+      },
+      {
+        "table": "VBEP",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 5,
+        "succeeded": 5
+      },
+      {
+        "table": "VBKD",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 3,
+        "succeeded": 3
+      },
+      {
+        "table": "VBPA",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 12,
+        "succeeded": 12
+      }
+    ],
+    "synthetic": true
+  },
+  {
+    "traceId": "TRANSFER_1780932595171_AOPH0I",
+    "status": "SUCCESS",
+    "startedAt": "2026-06-08T15:29:55.171Z",
+    "completedAt": "2026-06-08T15:31:36.578Z",
+    "sourceSystem": "MOCK_SYS",
+    "targetSystem": "MOCK_SYS",
+    "objectType": "SALES_DOCUMENT",
+    "sourceObjectId": "0000000002",
+    "objectId": "0000000002",
+    "generatedKeys": [
+      {
+        "field": "VBELN",
+        "targetValue": "9962108473"
+      },
+      {
+        "field": "VBELN",
+        "targetValue": "9962108474"
+      },
+      {
+        "field": "VBELN",
+        "targetValue": "9962108475"
+      },
+      {
+        "field": "VBELN",
+        "targetValue": "9962108476"
+      },
+      {
+        "field": "VBELN",
+        "targetValue": "9962108477"
+      }
+    ],
+    "results": [
+      {
+        "table": "VBAK",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 5,
+        "succeeded": 5
+      },
+      {
+        "table": "VAKPA",
         "status": "SYNTHETIC_INSERTED",
         "attempted": 20,
         "succeeded": 20
+      },
+      {
+        "table": "VAPMA",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 5,
+        "succeeded": 5
+      },
+      {
+        "table": "VBAP",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 5,
+        "succeeded": 5
+      },
+      {
+        "table": "VBEP",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 8,
+        "succeeded": 8
+      },
+      {
+        "table": "VBFS",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 3,
+        "succeeded": 3
+      },
+      {
+        "table": "VBKD",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 5,
+        "succeeded": 5
+      },
+      {
+        "table": "VBPA",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 20,
+        "succeeded": 20
+      }
+    ],
+    "synthetic": true
+  },
+  {
+    "traceId": "TRANSFER_1780668973165_0CDQRQ",
+    "status": "SUCCESS",
+    "startedAt": "2026-06-05T14:16:13.165Z",
+    "completedAt": "2026-06-05T14:17:54.162Z",
+    "sourceSystem": "MOCK_SYS",
+    "targetSystem": "MOCK_SYS",
+    "objectType": "SALES_DOCUMENT",
+    "sourceObjectId": "0000000002",
+    "objectId": "0000000002",
+    "generatedKeys": [
+      {
+        "field": "VBELN",
+        "targetValue": "9962108471"
+      },
+      {
+        "field": "VBELN",
+        "targetValue": "9962108472"
+      }
+    ],
+    "results": [
+      {
+        "table": "VBAK",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 2,
+        "succeeded": 2
+      },
+      {
+        "table": "VAKPA",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 8,
+        "succeeded": 8
+      },
+      {
+        "table": "VAPMA",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 3,
+        "succeeded": 3
+      },
+      {
+        "table": "VBAP",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 3,
+        "succeeded": 3
+      },
+      {
+        "table": "VBEP",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 6,
+        "succeeded": 6
+      },
+      {
+        "table": "VBKD",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 2,
+        "succeeded": 2
+      },
+      {
+        "table": "VBPA",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 8,
+        "succeeded": 8
+      }
+    ],
+    "synthetic": true
+  },
+  {
+    "traceId": "TRANSFER_1780668569033_DQR7WN",
+    "status": "SUCCESS",
+    "startedAt": "2026-06-05T14:09:29.033Z",
+    "completedAt": "2026-06-05T14:11:09.645Z",
+    "sourceSystem": "MOCK_SYS",
+    "targetSystem": "MOCK_SYS",
+    "objectType": "SALES_DOCUMENT",
+    "sourceObjectId": "0000000002",
+    "objectId": "0000000002",
+    "generatedKeys": [
+      {
+        "field": "VBELN",
+        "targetValue": "9962108469"
+      },
+      {
+        "field": "VBELN",
+        "targetValue": "9962108470"
+      }
+    ],
+    "results": [
+      {
+        "table": "VBAK",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 2,
+        "succeeded": 2
+      },
+      {
+        "table": "VAKPA",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 8,
+        "succeeded": 8
+      },
+      {
+        "table": "VAPMA",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 2,
+        "succeeded": 2
+      },
+      {
+        "table": "VBAP",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 2,
+        "succeeded": 2
+      },
+      {
+        "table": "VBEP",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 4,
+        "succeeded": 4
+      },
+      {
+        "table": "VBKD",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 2,
+        "succeeded": 2
+      },
+      {
+        "table": "VBPA",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 8,
+        "succeeded": 8
+      }
+    ],
+    "synthetic": true
+  },
+  {
+    "traceId": "TRANSFER_1780668212247_M220L9",
+    "status": "SUCCESS",
+    "startedAt": "2026-06-05T14:03:32.247Z",
+    "completedAt": "2026-06-05T14:05:11.483Z",
+    "sourceSystem": "MOCK_SYS",
+    "targetSystem": "MOCK_SYS",
+    "objectType": "SALES_DOCUMENT",
+    "sourceObjectId": "0000000002",
+    "objectId": "0000000002",
+    "generatedKeys": [
+      {
+        "field": "VBELN",
+        "targetValue": "9962108464"
+      },
+      {
+        "field": "VBELN",
+        "targetValue": "9962108465"
+      },
+      {
+        "field": "VBELN",
+        "targetValue": "9962108466"
+      },
+      {
+        "field": "VBELN",
+        "targetValue": "9962108467"
+      },
+      {
+        "field": "VBELN",
+        "targetValue": "9962108468"
+      }
+    ],
+    "results": [
+      {
+        "table": "VBAK",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 5,
+        "succeeded": 5
+      },
+      {
+        "table": "VAKPA",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 20,
+        "succeeded": 20
+      },
+      {
+        "table": "VAPMA",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 5,
+        "succeeded": 5
+      },
+      {
+        "table": "VBAP",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 5,
+        "succeeded": 5
+      },
+      {
+        "table": "VBEP",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 8,
+        "succeeded": 8
+      },
+      {
+        "table": "VBKD",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 5,
+        "succeeded": 5
+      },
+      {
+        "table": "VBPA",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 20,
+        "succeeded": 20
+      }
+    ],
+    "synthetic": true
+  },
+  {
+    "traceId": "TRANSFER_1780667770348_JX1AE8",
+    "status": "SUCCESS",
+    "startedAt": "2026-06-05T13:56:10.348Z",
+    "completedAt": "2026-06-05T13:57:52.585Z",
+    "sourceSystem": "MOCK_SYS",
+    "targetSystem": "MOCK_SYS",
+    "objectType": "SALES_DOCUMENT",
+    "sourceObjectId": "0000000002",
+    "objectId": "0000000002",
+    "generatedKeys": [
+      {
+        "field": "VBELN",
+        "targetValue": "9962108459"
+      },
+      {
+        "field": "VBELN",
+        "targetValue": "9962108460"
+      },
+      {
+        "field": "VBELN",
+        "targetValue": "9962108461"
+      },
+      {
+        "field": "VBELN",
+        "targetValue": "9962108462"
+      },
+      {
+        "field": "VBELN",
+        "targetValue": "9962108463"
+      }
+    ],
+    "results": [
+      {
+        "table": "VBAK",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 5,
+        "succeeded": 5
+      },
+      {
+        "table": "VAKPA",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 20,
+        "succeeded": 20
+      },
+      {
+        "table": "VAPMA",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 5,
+        "succeeded": 5
+      },
+      {
+        "table": "VBAP",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 5,
+        "succeeded": 5
+      },
+      {
+        "table": "VBEP",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 7,
+        "succeeded": 7
+      },
+      {
+        "table": "VBKD",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 5,
+        "succeeded": 5
+      },
+      {
+        "table": "VBPA",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 20,
+        "succeeded": 20
+      }
+    ],
+    "synthetic": true
+  },
+  {
+    "traceId": "TRANSFER_1780666041052_DO6QFZ",
+    "status": "SUCCESS",
+    "startedAt": "2026-06-05T13:27:21.052Z",
+    "completedAt": "2026-06-05T13:29:03.917Z",
+    "sourceSystem": "MOCK_SYS",
+    "targetSystem": "MOCK_SYS",
+    "objectType": "SALES_DOCUMENT",
+    "sourceObjectId": "0000000002",
+    "objectId": "0000000002",
+    "generatedKeys": [
+      {
+        "field": "SalesOrder",
+        "targetValue": "9962108452"
+      },
+      {
+        "field": "SalesOrder",
+        "targetValue": "9962108453"
+      },
+      {
+        "field": "SalesOrder",
+        "targetValue": "9962108454"
+      },
+      {
+        "field": "SalesOrder",
+        "targetValue": "9962108455"
+      },
+      {
+        "field": "SalesOrder",
+        "targetValue": "9962108456"
+      },
+      {
+        "field": "SalesOrder",
+        "targetValue": "9962108457"
+      },
+      {
+        "field": "SalesOrder",
+        "targetValue": "9962108458"
+      }
+    ],
+    "results": [
+      {
+        "table": "VBAK",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 7,
+        "succeeded": 7
+      },
+      {
+        "table": "VAKPA",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 28,
+        "succeeded": 28
+      },
+      {
+        "table": "VAPMA",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 7,
+        "succeeded": 7
+      },
+      {
+        "table": "VBAP",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 7,
+        "succeeded": 7
+      },
+      {
+        "table": "VBEP",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 9,
+        "succeeded": 9
+      },
+      {
+        "table": "VBKD",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 7,
+        "succeeded": 7
+      },
+      {
+        "table": "VBPA",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 28,
+        "succeeded": 28
+      }
+    ],
+    "synthetic": true
+  },
+  {
+    "traceId": "TRANSFER_1780665181885_V4Z4BR",
+    "status": "SUCCESS",
+    "startedAt": "2026-06-05T13:13:01.885Z",
+    "completedAt": "2026-06-05T13:14:42.582Z",
+    "sourceSystem": "MOCK_SYS",
+    "targetSystem": "MOCK_SYS",
+    "objectType": "SALES_DOCUMENT",
+    "sourceObjectId": "0000000002",
+    "objectId": "0000000002",
+    "generatedKeys": [
+      {
+        "field": "SalesOrder",
+        "targetValue": "9962108440"
+      },
+      {
+        "field": "SalesOrder",
+        "targetValue": "9962108441"
+      },
+      {
+        "field": "SalesOrder",
+        "targetValue": "9962108442"
+      },
+      {
+        "field": "SalesOrder",
+        "targetValue": "9962108443"
+      },
+      {
+        "field": "SalesOrder",
+        "targetValue": "9962108444"
+      }
+    ],
+    "results": [
+      {
+        "table": "VBAK",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 5,
+        "succeeded": 5
+      },
+      {
+        "table": "VAKPA",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 20,
+        "succeeded": 20
+      },
+      {
+        "table": "VAPMA",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 5,
+        "succeeded": 5
+      },
+      {
+        "table": "VBAP",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 5,
+        "succeeded": 5
+      },
+      {
+        "table": "VBEP",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 10,
+        "succeeded": 10
+      },
+      {
+        "table": "VBKD",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 5,
+        "succeeded": 5
+      },
+      {
+        "table": "VBPA",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 20,
+        "succeeded": 20
+      }
+    ],
+    "synthetic": true
+  },
+  {
+    "traceId": "TRANSFER_1780503158732_E2QEVH",
+    "status": "SUCCESS",
+    "startedAt": "2026-06-03T16:12:38.732Z",
+    "completedAt": "2026-06-03T16:13:28.331Z",
+    "sourceSystem": "MOCK_SYS",
+    "targetSystem": "MOCK_SYS",
+    "objectType": "SALES_DOCUMENT",
+    "sourceObjectId": "0000000002",
+    "objectId": "0000000002",
+    "generatedKeys": [
+      {
+        "target": "9962108438"
+      },
+      {
+        "target": "9962108439"
+      }
+    ],
+    "results": [
+      {
+        "table": "VBAK",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 2,
+        "succeeded": 2
+      },
+      {
+        "table": "VAKPA",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 8,
+        "succeeded": 8
+      },
+      {
+        "table": "VAPMA",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 2,
+        "succeeded": 2
+      },
+      {
+        "table": "VBAP",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 2,
+        "succeeded": 2
+      },
+      {
+        "table": "VBEP",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 4,
+        "succeeded": 4
+      },
+      {
+        "table": "VBKD",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 2,
+        "succeeded": 2
+      },
+      {
+        "table": "VBPA",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 8,
+        "succeeded": 8
+      }
+    ],
+    "synthetic": true
+  },
+  {
+    "traceId": "TRANSFER_1780501879302_7F6J10",
+    "status": "SUCCESS",
+    "startedAt": "2026-06-03T15:51:19.302Z",
+    "completedAt": "2026-06-03T15:52:24.113Z",
+    "sourceSystem": "MOCK_SYS",
+    "targetSystem": "MOCK_SYS",
+    "objectType": "SALES_DOCUMENT",
+    "sourceObjectId": "0000000002",
+    "objectId": "0000000002",
+    "generatedKeys": [],
+    "results": [
+      {
+        "table": "VBAK",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 2,
+        "succeeded": 2
+      },
+      {
+        "table": "VAKPA",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 8,
+        "succeeded": 8
+      },
+      {
+        "table": "VAPMA",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 2,
+        "succeeded": 2
+      },
+      {
+        "table": "VBAP",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 2,
+        "succeeded": 2
+      },
+      {
+        "table": "VBEP",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 4,
+        "succeeded": 4
+      },
+      {
+        "table": "VBKD",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 2,
+        "succeeded": 2
+      },
+      {
+        "table": "VBPA",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 8,
+        "succeeded": 8
+      }
+    ],
+    "synthetic": true
+  },
+  {
+    "traceId": "TRANSFER_1780468493625_HJXGR6",
+    "status": "SUCCESS",
+    "startedAt": "2026-06-03T06:34:53.625Z",
+    "completedAt": "2026-06-03T06:35:50.770Z",
+    "sourceSystem": "MOCK_SYS",
+    "targetSystem": "MOCK_SYS",
+    "objectType": "SALES_DOCUMENT",
+    "sourceObjectId": "0000000002",
+    "objectId": "0000000002",
+    "generatedKeys": [],
+    "results": [
+      {
+        "table": "VBAK",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 3,
+        "succeeded": 3
+      },
+      {
+        "table": "VAKPA",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 12,
+        "succeeded": 12
+      },
+      {
+        "table": "VAPMA",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 3,
+        "succeeded": 3
+      },
+      {
+        "table": "VBAP",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 3,
+        "succeeded": 3
+      },
+      {
+        "table": "VBEP",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 6,
+        "succeeded": 6
+      },
+      {
+        "table": "VBKD",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 3,
+        "succeeded": 3
+      },
+      {
+        "table": "VBPA",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 12,
+        "succeeded": 12
+      }
+    ],
+    "synthetic": true
+  },
+  {
+    "traceId": "TRANSFER_1780467575407_EREL9Y",
+    "status": "SUCCESS",
+    "startedAt": "2026-06-03T06:19:35.407Z",
+    "completedAt": "2026-06-03T06:20:25.262Z",
+    "sourceSystem": "MOCK_SYS",
+    "targetSystem": "MOCK_SYS",
+    "objectType": "SALES_DOCUMENT",
+    "sourceObjectId": "0000000002",
+    "objectId": "0000000002",
+    "generatedKeys": [],
+    "results": [
+      {
+        "table": "VBAK",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 1,
+        "succeeded": 1
+      },
+      {
+        "table": "VAKPA",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 4,
+        "succeeded": 4
+      },
+      {
+        "table": "VAPMA",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 1,
+        "succeeded": 1
+      },
+      {
+        "table": "VBAP",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 1,
+        "succeeded": 1
+      },
+      {
+        "table": "VBEP",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 2,
+        "succeeded": 2
+      },
+      {
+        "table": "VBKD",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 1,
+        "succeeded": 1
+      },
+      {
+        "table": "VBPA",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 4,
+        "succeeded": 4
+      }
+    ],
+    "synthetic": true
+  },
+  {
+    "traceId": "TRANSFER_1780467396644_YQQLZF",
+    "status": "SUCCESS",
+    "startedAt": "2026-06-03T06:16:36.644Z",
+    "completedAt": "2026-06-03T06:17:26.161Z",
+    "sourceSystem": "MOCK_SYS",
+    "targetSystem": "MOCK_SYS",
+    "objectType": "SALES_DOCUMENT",
+    "sourceObjectId": "0000000002",
+    "objectId": "0000000002",
+    "generatedKeys": [],
+    "results": [
+      {
+        "table": "VBAK",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 1,
+        "succeeded": 1
+      },
+      {
+        "table": "VAKPA",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 4,
+        "succeeded": 4
+      },
+      {
+        "table": "VAPMA",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 1,
+        "succeeded": 1
+      },
+      {
+        "table": "VBAP",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 1,
+        "succeeded": 1
+      },
+      {
+        "table": "VBEP",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 2,
+        "succeeded": 2
+      },
+      {
+        "table": "VBKD",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 1,
+        "succeeded": 1
+      },
+      {
+        "table": "VBPA",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 4,
+        "succeeded": 4
+      }
+    ],
+    "synthetic": true
+  },
+  {
+    "traceId": "TRANSFER_1780467039294_LZ41GJ",
+    "status": "SUCCESS",
+    "startedAt": "2026-06-03T06:10:39.294Z",
+    "completedAt": "2026-06-03T06:11:29.463Z",
+    "sourceSystem": "MOCK_SYS",
+    "targetSystem": "MOCK_SYS",
+    "objectType": "SALES_DOCUMENT",
+    "sourceObjectId": "0000000002",
+    "objectId": "0000000002",
+    "generatedKeys": [],
+    "results": [
+      {
+        "table": "VBAK",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 1,
+        "succeeded": 1
+      },
+      {
+        "table": "VAKPA",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 4,
+        "succeeded": 4
+      },
+      {
+        "table": "VAPMA",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 1,
+        "succeeded": 1
+      },
+      {
+        "table": "VBAP",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 1,
+        "succeeded": 1
+      },
+      {
+        "table": "VBEP",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 2,
+        "succeeded": 2
+      },
+      {
+        "table": "VBKD",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 1,
+        "succeeded": 1
+      },
+      {
+        "table": "VBPA",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 4,
+        "succeeded": 4
+      }
+    ],
+    "synthetic": true
+  },
+  {
+    "traceId": "TRANSFER_1780466355639_91E6HU",
+    "status": "SUCCESS",
+    "startedAt": "2026-06-03T05:59:15.639Z",
+    "completedAt": "2026-06-03T06:00:06.957Z",
+    "sourceSystem": "MOCK_SYS",
+    "targetSystem": "MOCK_SYS",
+    "objectType": "SALES_DOCUMENT",
+    "sourceObjectId": "0000000002",
+    "objectId": "0000000002",
+    "generatedKeys": [],
+    "results": [
+      {
+        "table": "VBAK",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 1,
+        "succeeded": 1
+      },
+      {
+        "table": "VAKPA",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 4,
+        "succeeded": 4
+      },
+      {
+        "table": "VAPMA",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 1,
+        "succeeded": 1
+      },
+      {
+        "table": "VBAP",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 1,
+        "succeeded": 1
+      },
+      {
+        "table": "VBEP",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 2,
+        "succeeded": 2
+      },
+      {
+        "table": "VBFA",
+        "status": "FAILED",
+        "attempted": 3,
+        "succeeded": 0,
+        "error": "A data record is to be inserted even though a data record with the same primary key or same unique secondary key exists."
+      },
+      {
+        "table": "VBKD",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 1,
+        "succeeded": 1
+      },
+      {
+        "table": "VBPA",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 4,
+        "succeeded": 4
+      }
+    ],
+    "synthetic": true
+  },
+  {
+    "traceId": "TRANSFER_1780466224691_8LJOTV",
+    "status": "SUCCESS",
+    "startedAt": "2026-06-03T05:57:04.691Z",
+    "completedAt": "2026-06-03T05:57:55.112Z",
+    "sourceSystem": "MOCK_SYS",
+    "targetSystem": "MOCK_SYS",
+    "objectType": "SALES_DOCUMENT",
+    "sourceObjectId": "0000000002",
+    "objectId": "0000000002",
+    "generatedKeys": [],
+    "results": [
+      {
+        "table": "VBAK",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 1,
+        "succeeded": 1
+      },
+      {
+        "table": "VAKPA",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 4,
+        "succeeded": 4
+      },
+      {
+        "table": "VAPMA",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 1,
+        "succeeded": 1
+      },
+      {
+        "table": "VBAP",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 1,
+        "succeeded": 1
+      },
+      {
+        "table": "VBEP",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 2,
+        "succeeded": 2
+      },
+      {
+        "table": "VBFA",
+        "status": "FAILED",
+        "attempted": 3,
+        "succeeded": 0,
+        "error": "A data record is to be inserted even though a data record with the same primary key or same unique secondary key exists."
+      },
+      {
+        "table": "VBKD",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 1,
+        "succeeded": 1
+      },
+      {
+        "table": "VBPA",
+        "status": "SYNTHETIC_INSERTED",
+        "attempted": 4,
+        "succeeded": 4
+      }
+    ],
+    "synthetic": true
+  },
+  {
+    "traceId": "TRANSFER_1779467312514_0AJEJI",
+    "status": "FAILED",
+    "startedAt": "2026-05-22T16:28:32.514Z",
+    "completedAt": "2026-05-22T16:29:23.571Z",
+    "sourceSystem": "MOCK_SYS",
+    "targetSystem": "MOCK_SYS",
+    "objectType": "SALES_DOCUMENT",
+    "sourceObjectId": "0000000002",
+    "objectId": "0000000002",
+    "synthetic": true,
+    "generatedIdRange": "3 to 4",
+    "pkField": "VBELN",
+    "generatedKeys": [],
+    "results": [
+      {
+        "table": "VBAK",
+        "status": "FAILED",
+        "attempted": 2,
+        "succeeded": 0,
+        "error": "A data record is to be inserted even though a data record with the same primary key or same unique secondary key exists."
+      },
+      {
+        "table": "VBAP",
+        "status": "FAILED",
+        "attempted": 2,
+        "succeeded": 0,
+        "error": "A data record is to be inserted even though a data record with the same primary key or same unique secondary key exists."
+      },
+      {
+        "table": "VBKD",
+        "status": "FAILED",
+        "attempted": 2,
+        "succeeded": 0,
+        "error": "A data record is to be inserted even though a data record with the same primary key or same unique secondary key exists."
+      },
+      {
+        "table": "VBUK",
+        "status": "SKIPPED",
+        "attempted": 0,
+        "succeeded": 0,
+        "reason": "No source reference rows available"
+      },
+      {
+        "table": "VBUP",
+        "status": "SKIPPED",
+        "attempted": 0,
+        "succeeded": 0,
+        "reason": "No source reference rows available"
+      },
+      {
+        "table": "VBEP",
+        "status": "FAILED",
+        "attempted": 4,
+        "succeeded": 0,
+        "error": "A data record is to be inserted even though a data record with the same primary key or same unique secondary key exists."
+      },
+      {
+        "table": "VBPA",
+        "status": "FAILED",
+        "attempted": 8,
+        "succeeded": 0,
+        "error": "A data record is to be inserted even though a data record with the same primary key or same unique secondary key exists."
+      },
+      {
+        "table": "VBFA",
+        "status": "FAILED",
+        "attempted": 6,
+        "succeeded": 0,
+        "error": "A data record is to be inserted even though a data record with the same primary key or same unique secondary key exists."
       }
     ]
   }

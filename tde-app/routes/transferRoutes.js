@@ -86,10 +86,10 @@ router.post('/run', async (req, res, next) => {
 
 router.post('/download-synthetic', async (req, res, next) => {
   try {
-    const { csvContent, filename } = await generateSyntheticCsv(req.body);
-    res.setHeader('Content-Type', 'text/csv');
+    const { zipBuffer, filename } = await generateSyntheticCsv(req.body);
+    res.setHeader('Content-Type', 'application/zip');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    res.send(csvContent);
+    res.send(zipBuffer);
   } catch (error) {
     next(error);
   }

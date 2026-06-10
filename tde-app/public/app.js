@@ -16,7 +16,7 @@ const elements = {
   synthesizeButton: document.getElementById('synthesizeButton'),
   runButton: document.getElementById('runButton'),
   runSyntheticButton: document.getElementById('runSyntheticButton'),
-  confirmSyntheticButton: document.getElementById('confirmSyntheticButton'),
+
   downloadSyntheticButton: document.getElementById('downloadSyntheticButton'),
   historyRefreshButton: document.getElementById('historyRefreshButton'),
   historyList: document.getElementById('historyList'),
@@ -82,7 +82,7 @@ function updateActionState() {
   elements.synthesizeButton.disabled = disabled;
   elements.runButton.disabled = disabled;
   elements.runSyntheticButton.disabled = disabled;
-  elements.confirmSyntheticButton.disabled = disabled;
+
   elements.downloadSyntheticButton.disabled = disabled;
   elements.historyRefreshButton.disabled = disabled;
   elements.newRunButton.disabled = disabled;
@@ -144,7 +144,11 @@ function formatRunTime(value) {
 
 function getGeneratedKeyText(generatedKeys) {
   return (generatedKeys || [])
-    .map((key) => `${key.field}: ${key.targetValue}`)
+    .map((key) => {
+      const field = key.field || 'ID';
+      const val = key.targetValue || key.target || 'Unknown';
+      return `${field}: ${val}`;
+    })
     .join(', ');
 }
 
@@ -408,8 +412,7 @@ function renderSidebarHistory(runs) {
 
     const title = document.createElement('span');
     title.className = 'history-card__title';
-    const runLabel = index === 0 ? 'Current Run' : index === 1 ? 'Last Run' : `Run ${index + 1}`;
-    title.textContent = run.synthetic ? `${runLabel} ⚗` : runLabel;
+    title.textContent = index === 0 ? 'Current Run' : index === 1 ? 'Last Run' : `Run ${index + 1}`;
 
     const meta = document.createElement('span');
     meta.className = 'history-card__meta';
@@ -424,11 +427,7 @@ function renderSidebarHistory(runs) {
 
     const keys = document.createElement('span');
     keys.className = 'history-card__keys';
-    if (run.synthetic && run.generatedIdRange) {
-      keys.textContent = `${run.pkField || 'Keys'}: ${run.generatedIdRange}`;
-    } else {
-      keys.textContent = getGeneratedKeyText(run.generatedKeys) || 'No generated keys';
-    }
+    keys.textContent = getGeneratedKeyText(run.generatedKeys) || 'No generated keys';
 
     card.append(title, meta, keys, footer);
 
@@ -756,7 +755,7 @@ async function submitTransfer(endpoint, label, synthesize = false) {
     const result = await requestJson(endpoint, {
       method: 'POST',
       body: JSON.stringify(payload),
-      timeoutMs: label === 'Transfer' ? 180000 : 120000
+      timeoutMs: label === 'Transfer' ? 180000 : 300000
     });
 
     setResult(result);
@@ -880,13 +879,6 @@ elements.runButton.addEventListener('click', () => {
 });
 
 elements.runSyntheticButton.addEventListener('click', () => {
-  // Step 1: just reveal the options panel — do NOT start the transfer yet
-  elements.syntheticOptionsPanel.hidden = false;
-  elements.confirmSyntheticButton.focus();
-});
-
-elements.confirmSyntheticButton.addEventListener('click', () => {
-  // Step 2: user has configured options and is ready to run
   if (!elements.objectId.value.trim()) {
     handleMissingObjectId();
     return;
@@ -917,7 +909,7 @@ elements.downloadSyntheticButton.addEventListener('click', async () => {
     }
     const contentDisposition = response.headers.get('Content-Disposition') || '';
     const filenameMatch = contentDisposition.match(/filename="(.+?)"/);
-    const filename = filenameMatch ? filenameMatch[1] : 'synthetic_data.csv';
+    const filename = filenameMatch ? filenameMatch[1] : 'synthetic_data.zip';
     const blob = await response.blob();
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');

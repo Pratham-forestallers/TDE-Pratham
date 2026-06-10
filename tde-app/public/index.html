@@ -58,102 +58,100 @@
 
       <section class="workspace">
         <form id="transferForm" class="control-panel">
-          <fieldset>
-            <legend>System Settings</legend>
-            <div class="field-grid">
-              <label>
-                Source System
-                <select id="sourceSystem" name="sourceSystem" required></select>
-              </label>
-              <label>
-                Target System
-                <select id="targetSystem" name="targetSystem" required></select>
-              </label>
-            </div>
-          </fieldset>
+          <div class="form-row-2">
+            <fieldset>
+              <legend>System Settings</legend>
+              <div class="field-grid">
+                <label>
+                  Source System
+                  <select id="sourceSystem" name="sourceSystem" required></select>
+                </label>
+                <label>
+                  Target System
+                  <select id="targetSystem" name="targetSystem" required></select>
+                </label>
+              </div>
+            </fieldset>
 
-          <fieldset>
-            <legend>Object Selection</legend>
-            <div class="field-grid">
-              <label>
-                Object Type
-                <select id="objectType" name="objectType" required></select>
-              </label>
-              <label>
-                <span id="objectIdLabel">Object ID</span>
-                <input id="objectId" name="objectId" type="text" placeholder="Enter object ID" autocomplete="off" required>
-              </label>
-            </div>
-          </fieldset>
+            <fieldset>
+              <legend>Object Selection</legend>
+              <div class="field-grid">
+                <label>
+                  Object Type
+                  <select id="objectType" name="objectType" required></select>
+                </label>
+                <label>
+                  <span id="objectIdLabel">Object ID</span>
+                  <input id="objectId" name="objectId" type="text" placeholder="Enter object ID" autocomplete="off" required>
+                </label>
+              </div>
+            </fieldset>
+          </div>
 
-          <fieldset class="privacy-fieldset">
-            <legend>🔒 Data Privacy</legend>
-            <label class="toggle-label" for="maskPhoneNumbers">
-              <span class="toggle-label__text">
-                Mask Phone Numbers
-                <span class="toggle-label__hint">Replaces digits after the area code with *** before transfer</span>
-              </span>
-              <span class="toggle-switch">
-                <input id="maskPhoneNumbers" name="maskPhoneNumbers" type="checkbox" class="toggle-switch__input">
-                <span class="toggle-switch__track" aria-hidden="true">
-                  <span class="toggle-switch__thumb"></span>
+          <div class="form-row-2">
+            <fieldset class="privacy-fieldset">
+              <legend>🔒 Data Privacy</legend>
+              <label class="toggle-label" for="maskPhoneNumbers">
+                <span class="toggle-label__text">
+                  Mask Phone Numbers
+                  <span class="toggle-label__hint">Replaces digits after the area code with *** before transfer</span>
                 </span>
-              </span>
-            </label>
-          </fieldset>
+                <span class="toggle-switch">
+                  <input id="maskPhoneNumbers" name="maskPhoneNumbers" type="checkbox" class="toggle-switch__input">
+                  <span class="toggle-switch__track" aria-hidden="true">
+                    <span class="toggle-switch__thumb"></span>
+                  </span>
+                </span>
+              </label>
+            </fieldset>
 
-          <fieldset id="syntheticOptionsPanel" class="synthetic-options-panel" hidden>
-            <legend>⚗ Synthetic Options</legend>
-            <div class="field-grid">
-              <label>
-                Rows to Generate
-                <input id="generateCount" name="generateCount" type="number" min="1" max="10000" value="100" placeholder="100">
-              </label>
-              <label>
-                Sampling Mode
-                <select id="sampleMode" name="sampleMode">
-                  <option value="top">Top N rows (default)</option>
-                  <option value="random">Random Sampling</option>
-                  <option value="range">Row Range</option>
-                </select>
-              </label>
-            </div>
-            <div id="sampleTopOptions" class="field-grid sample-sub-options">
-              <label>
-                Sample Size (rows to learn from)
-                <input id="sampleTopCount" name="sampleTopCount" type="number" min="1" max="5000" value="500" placeholder="500">
-              </label>
-            </div>
-            <div id="sampleRandomOptions" class="field-grid sample-sub-options" hidden>
-              <label>
-                Random Sample Size
-                <input id="sampleRandomCount" name="sampleRandomCount" type="number" min="1" max="5000" value="200" placeholder="200">
-              </label>
-            </div>
-            <div id="sampleRangeOptions" class="field-grid sample-sub-options" hidden>
-              <label>
-                From Row
-                <input id="sampleRangeFrom" name="sampleRangeFrom" type="number" min="0" value="0" placeholder="0">
-              </label>
-              <label>
-                To Row
-                <input id="sampleRangeTo" name="sampleRangeTo" type="number" min="1" value="200" placeholder="200">
-              </label>
-            </div>
-
-            <div class="sample-sub-options" style="border-top: 1px solid rgba(103,128,184,0.3); margin-top: 16px; padding-top: 14px; display: flex; justify-content: flex-end;">
-              <button id="confirmSyntheticButton" type="button" class="primary" style="background: linear-gradient(135deg, #6780B8, #46b4c8); min-width: 200px;">
-                ▶ Run Synthetic Transfer
-              </button>
-            </div>
-          </fieldset>
+            <fieldset id="syntheticOptionsPanel" class="synthetic-options-panel">
+              <legend>⚗ Synthetic Options</legend>
+              <div class="field-grid">
+                <label>
+                  Rows to Generate
+                  <input id="generateCount" name="generateCount" type="number" min="1" max="10000" value="100" placeholder="100">
+                </label>
+                <label>
+                  Sampling Mode
+                  <select id="sampleMode" name="sampleMode">
+                    <option value="top">Top N rows (default)</option>
+                    <option value="random">Random Sampling</option>
+                    <option value="range">Row Range</option>
+                  </select>
+                </label>
+              </div>
+              <div id="sampleTopOptions" class="field-grid sample-sub-options">
+                <label>
+                  Sample Size (rows to learn from)
+                  <input id="sampleTopCount" name="sampleTopCount" type="number" min="1" max="5000" value="500" placeholder="500">
+                </label>
+              </div>
+              <div id="sampleRandomOptions" class="field-grid sample-sub-options" hidden>
+                <label>
+                  Random Sample Size
+                  <input id="sampleRandomCount" name="sampleRandomCount" type="number" min="1" max="5000" value="200" placeholder="200">
+                </label>
+              </div>
+              <div id="sampleRangeOptions" class="field-grid sample-sub-options" hidden>
+                <label>
+                  From Row
+                  <input id="sampleRangeFrom" name="sampleRangeFrom" type="number" min="0" value="0" placeholder="0">
+                </label>
+                <label>
+                  To Row
+                  <input id="sampleRangeTo" name="sampleRangeTo" type="number" min="1" value="200" placeholder="200">
+                </label>
+              </div>
+            </fieldset>
+          </div>
 
           <section class="actions" aria-label="Actions">
             <button id="previewButton" type="button">Preview</button>
             <button id="synthesizeButton" type="button" class="secondary" style="border: 1px solid #4F556A;">Synthesize Data</button>
             <button id="runButton" type="button" class="primary">Run Transfer</button>
-            <button id="runSyntheticButton" type="button" class="primary" style="background-color: #6780B8;">Synthetic Transfer</button>
-            <button id="downloadSyntheticButton" type="button" class="secondary" style="border: 1px solid #2ECC71; color: #2ECC71;" title="Generate synthetic data and download as CSV">⬇ Download Synthetic CSV</button>
+            <button id="runSyntheticButton" type="button" class="primary" style="background: linear-gradient(135deg, #6780B8, #46b4c8);">▶ Run Synthetic Transfer</button>
+            <button id="downloadSyntheticButton" type="button" class="secondary" style="border: 1px solid #2ECC71; color: #2ECC71;" title="Generate synthetic data and download as ZIP">⬇ Download Synthetic ZIP</button>
           </section>
 
         </form>

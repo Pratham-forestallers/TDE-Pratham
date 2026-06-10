@@ -1,0 +1,15 @@
+graph TD
+    UI[Web User Interface] -->|Triggers Generation| NODE[Node.js Transfer Service]
+    NODE <-->|1. Fetch Anchor Data| SAP[(SAP S/4HANA / Mock System)]
+    NODE <-->|2. Request Synthetic Data| PY[Python ML API]
+    NODE -->|3. Push Validated Data| SAP
+    
+    classDef ui fill:#4A90E2,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef node fill:#50E3C2,stroke:#fff,stroke-width:2px,color:#333;
+    classDef py fill:#F5A623,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef sap fill:#9013FE,stroke:#fff,stroke-width:2px,color:#fff;
+
+    class UI ui;
+    class NODE node;
+    class PY py;
+    class SAP sap;

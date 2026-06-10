@@ -62,13 +62,15 @@ const PAYLOAD_KEYS = {
   objectKey: process.env.TDE_PAYLOAD_OBJECT_KEY_FIELD || 'objectKey',
   objectId: process.env.TDE_PAYLOAD_OBJECT_ID_FIELD || 'objectId',
   whereClause: process.env.TDE_PAYLOAD_WHERE_CLAUSE_FIELD || 'where',
-  rows: process.env.TDE_PAYLOAD_ROWS_FIELD || 'rows'
+  rows: process.env.TDE_PAYLOAD_ROWS_FIELD || 'rows',
+  mode: process.env.TDE_PAYLOAD_MODE_FIELD || 'mode'
 };
 
 const DEFAULT_FETCH_ROWS = Number(process.env.TDE_ODATA_DEFAULT_ROWS || 5000);
 const INSERT_ROWS_AS_STRING = String(process.env.TDE_INSERT_ROWS_AS_STRING || 'true').toLowerCase() !== 'false';
 const INSERT_BATCH_SIZE = normalizePositiveInteger(process.env.TDE_INSERT_BATCH_SIZE, 1);
 const INSERT_REQUEST_ID = process.env.TDE_INSERT_REQUEST_ID || 'INSERT_001';
+const INSERT_MODE = process.env.TDE_INSERT_MODE || 'I'; // I=Insert, A=Append, U=Update, M=Modify
 
 function normalizePositiveInteger(value, fallback) {
   const parsed = Number(value);
@@ -353,12 +355,26 @@ function buildInsertPayloadEnvelope(payload, payloadField) {
 }
 
 function buildFetchPayload(tableName, objectId, objectType, objectDefinition, context) {
+  let whereClause = '';
+  let actualObjectId = objectId;
+
+  if (context && context.where !== undefined) {
+    // Caller explicitly provided a WHERE clause — use it as-is
+    actualObjectId = '';
+    whereClause = context.where;
+  } else if (objectId === '__FETCH_ALL__') {
+    actualObjectId = '';
+    whereClause = '';
+  } else {
+    whereClause = buildWhereClause(tableName, objectId, objectDefinition, context);
+  }
+
   return {
     [PAYLOAD_KEYS.tableName]: tableName,
     [PAYLOAD_KEYS.objectKey]: objectDefinition.objectKey,
-    [PAYLOAD_KEYS.objectId]: objectId,
-    [PAYLOAD_KEYS.whereClause]: buildWhereClause(tableName, objectId, objectDefinition, context),
-    [PAYLOAD_KEYS.rows]: DEFAULT_FETCH_ROWS
+    [PAYLOAD_KEYS.objectId]: actualObjectId,
+    [PAYLOAD_KEYS.whereClause]: whereClause,
+    [PAYLOAD_KEYS.rows]: context.rows || DEFAULT_FETCH_ROWS
   };
 }
 
@@ -966,8 +982,10 @@ function buildInsertPayload(tableName, records) {
 
   // InsertDataSet expects one Payload string. Inside that Payload, rows can be either
   // an array or a stringified array; our default matches the working manual body.
+  // The `mode` field is required by the ABAP function: I=Insert, A=Append, U=Update, M=Modify.
   return {
     [PAYLOAD_KEYS.tableName]: tableName,
+    [PAYLOAD_KEYS.mode]: INSERT_MODE,
     [PAYLOAD_KEYS.rows]: INSERT_ROWS_AS_STRING ? JSON.stringify(normalizedRecords) : normalizedRecords
   };
 }
