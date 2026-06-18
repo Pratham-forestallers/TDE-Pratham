@@ -10,7 +10,7 @@ const SYNTHETIC_API_URL = process.env.SYNTHETIC_API_URL || 'http://localhost:800
  * @param {number} numRecords - How many records to generate
  * @returns {Promise<Array>} The synthetic records
  */
-async function requestSyntheticData(entitySet, sourceData = [], numRecords = 100, baseOffset = null, maskPhoneNumbers = true) {
+async function requestSyntheticData(entitySet, sourceData = [], numRecords = 100, baseOffset = null, maskPhoneNumbers = true, optionalFollowons = []) {
   try {
     logger.info(`Requesting synthetic data for ${entitySet} from Python API`);
     
@@ -19,7 +19,8 @@ async function requestSyntheticData(entitySet, sourceData = [], numRecords = 100
       numRecords: numRecords,
       sourceData: sourceData,
       baseOffset: baseOffset,
-      maskPhoneNumbers: maskPhoneNumbers
+      maskPhoneNumbers: maskPhoneNumbers,
+      optionalFollowons: optionalFollowons
     }, {
       timeout: 120000 // ML generation might take a bit
     });

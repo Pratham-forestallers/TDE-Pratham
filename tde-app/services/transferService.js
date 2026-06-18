@@ -21,6 +21,7 @@ const {
 const { AppError } = require('../utils/errorHandler');
 const logger = require('../utils/logger');
 const syntheticDataClient = require('./syntheticDataClient');
+const objectKeyFieldMetadata = require('../config/objectKeyFieldMetadata');
 
 function findObjectConfigByKey(objectKey) {
   const normalizedObjectKey = Number(objectKey);
@@ -1056,7 +1057,8 @@ async function executeTransfer(payload) {
     sampleCount = 500,
     sampleFrom = 0,
     sampleTo = 200,
-    generateCount = 100
+    generateCount = 100,
+    optionalFollowons = []
   } = payload;
   const traceId = createTransferTraceId();
   const startedAt = new Date().toISOString();
@@ -1304,7 +1306,8 @@ async function executeTransfer(payload) {
         referenceRecords,
         numToGenerate,
         baseOffsetToUse,
-        maskPhoneNumbers
+        maskPhoneNumbers,
+        optionalFollowons
       );
 
       // Overlay coherence-critical fields from each anchor record onto the ML-generated VBAK.
@@ -1423,6 +1426,7 @@ async function executeTransfer(payload) {
       // Step 5: Populate Type B & C child tables using dynamic round-robin strategy.
       // Tables that are virtual/computed and should never be directly inserted.
       const SKIP_INSERT_TABLES = new Set(['SALESDOC_CNT', 'PRCD_ELEMENTS', 'VBFA']);
+      const SKIP_TEMPLATE_TABLES = new Set(['VBFA']);
       const VBELV_TABLE = 'VBFA';
 
       const allSyntheticChildRecordsByTable = {}; // table -> records[]
@@ -1437,6 +1441,7 @@ async function executeTransfer(payload) {
          for (const tableEntry of templateTables) {
             if (!tableEntry.records || tableEntry.records.length === 0) continue;
             if (tableEntry.status === 'SKIPPED') continue;
+            if (SKIP_TEMPLATE_TABLES.has(tableEntry.table)) continue;
             if (SKIP_INSERT_TABLES.has(tableEntry.table)) continue;
             if (resolvedBase === null || resolvedBase === undefined) continue;
             
@@ -1464,6 +1469,9 @@ async function executeTransfer(payload) {
                    if (upperKey === 'RUUID') delete rec[key];
                  } else {
                    if (upperKey === 'VBELN') rec[key] = syntheticVbeln;
+                   if (tableEntry.table === 'VBAP' && (upperKey === 'VGBEL' || upperKey === 'VGPOS')) {
+                       rec[key] = ''; // Clear predecessor references so old quotations don't show up in Document Flow
+                   }
                  }
                  
                  // Sync critical header values to child items so SAP GUI doesn't reject the Frankenstein document
@@ -1661,6 +1669,25 @@ async function executeTransfer(payload) {
         for (let i = 0; i < syntheticRootRecords.length; i++) {
           synthKeys.push({ field: pkField, targetValue: String(resolvedBase + i).padStart(10, '0') });
         }
+      }
+
+      // Step 7: Orchestrate Synthesizing Follow-on objects
+      try {
+        const followOnKeys = await synthesizeFollowOns(
+          syntheticRootRecords,
+          optionalFollowons || [],
+          sourceClient,
+          targetClient2,
+          sourceSystem,
+          targetSystem,
+          allTableResults,
+          numToGenerate
+        );
+        if (followOnKeys && followOnKeys.length > 0) {
+           synthKeys.push(...followOnKeys);
+        }
+      } catch (fErr) {
+        logger.error(`Follow-on generation orchestration failed: ${fErr.message}`);
       }
 
       recordRunHistory({
@@ -2141,7 +2168,7 @@ async function rollbackRun(traceId) {
  * and returns it as a CSV string ready for download — no target system required.
  */
 async function generateSyntheticCsv(params) {
-  const { sourceSystem, objectKey, objectType, objectId, generateCount = 100, maskPhoneNumbers = true } = params;
+  const { sourceSystem, objectKey, objectType, objectId, generateCount = 100, maskPhoneNumbers = true, optionalFollowons = [] } = params;
   const requestedObject = objectKey || objectType;
   const normalizedObjectId = normalizeObjectId(requestedObject, objectId);
   const { configKey, definition } = resolveObjectDefinition(requestedObject);
@@ -2173,7 +2200,8 @@ async function generateSyntheticCsv(params) {
     referenceRecords, 
     generateCount,
     dummyBaseOffset,
-    maskPhoneNumbers
+    maskPhoneNumbers,
+    optionalFollowons
   );
 
   if (!syntheticRootRecords || syntheticRootRecords.length === 0) {
@@ -2247,6 +2275,214 @@ async function generateSyntheticCsv(params) {
   return { zipBuffer: zip.toBuffer(), filename };
 }
 
+/**
+ * Orchestrates the synthesis of follow-on documents (e.g. Delivery, Billing) based on the target keys
+ * selected in the UI. For full generation, this queries the follow-on object's root table for a
+ * template, clones its full configured table tree, stamps new IDs, and writes a VBFA document flow
+ * link from the synthetic Sales Order to the new follow-on document.
+ *
+ * Key design decisions:
+ *  - followOnVbeln is deterministically derived from the synthetic SO VBELN + follow-on type so
+ *    it is guaranteed unique and can never collide with real SAP documents.
+ *  - VBFA.VBTYP_N is read from the VBTYP_N_BY_OBJECT map in followonConfig, not guessed from the
+ *    template record's VBTYP field which carries the wrong meaning.
+ *  - POSNV / POSNN are '000000' for header-level document flow links (SAP standard).
+ *  - VBFA cloning from template tables is skipped; only the explicit clean link is written.
+ */
+async function synthesizeFollowOns(syntheticRootRecords, optionalFollowOnKeys, sourceClient, targetClient, sourceSystem, targetSystem, allTableResults, numToGenerate) {
+  const { FOLLOWON_RULES, VBTYP_N_BY_OBJECT } = require('../config/followonConfig');
+  const generatedFollowOnKeys = [];
+
+  // Extract mandatory keys from the rules and combine with the selected optional keys
+  const mandatoryKeys = FOLLOWON_RULES.filter(r => r.mandatory).map(r => r.targetObjectKey);
+  
+  // Combine, parse as ints, and deduplicate
+  const allFollowOnKeys = [...new Set([...mandatoryKeys, ...optionalFollowOnKeys.map(k => parseInt(k, 10))])];
+
+  for (const followOnKey of allFollowOnKeys) {
+    const rule = FOLLOWON_RULES.find(r => r.targetObjectKey === followOnKey);
+    if (!rule) continue;
+
+    try {
+      const { configKey, definition } = resolveObjectDefinition(followOnKey);
+      if (!definition || !definition.tables || definition.tables.length === 0) continue;
+
+      const isMandatory = rule.mandatory ? '(MANDATORY)' : '(OPTIONAL)';
+      logger.info(`Generating full synthetic tree for follow-on: ${configKey} ${isMandatory}`, { targetSystem });
+
+      // 1. Determine the root table and its primary key field
+      const rootTableName = definition.rootTable || (definition.tables && definition.tables[0] && definition.tables[0].tableName);
+      
+      let rootPkField = definition.keyField;
+      const followOnKeyStr = String(followOnKey).trim();
+      const metaKey = followOnKeyStr.startsWith('OBJECT_') ? followOnKeyStr.replace('OBJECT_', '') : followOnKeyStr;
+      
+      if ((!rootPkField || rootPkField === 'OBJECT_ID') && objectKeyFieldMetadata[metaKey]) {
+         const meta = objectKeyFieldMetadata[metaKey];
+         if (meta.keyFieldsByTable && meta.keyFieldsByTable[rootTableName] && meta.keyFieldsByTable[rootTableName].length > 0) {
+            rootPkField = meta.keyFieldsByTable[rootTableName][0];
+         }
+      }
+      
+      if (!rootPkField || rootPkField === 'OBJECT_ID') rootPkField = 'VBELN';
+
+      // 2. Fetch a single template document from the source system
+      const randomDocs = await fetchTableDataWithClient(
+         sourceClient, sourceSystem, rootTableName, '__FETCH_ALL__', configKey, { rows: 1 }
+      );
+      
+      if (!randomDocs || randomDocs.length === 0) {
+         logger.warn(`No reference docs found for follow-on ${configKey} in ${rootTableName} - Skipping generation`);
+         continue;
+      }
+      
+      const referenceId = randomDocs[0][rootPkField] || randomDocs[0][rootPkField.toLowerCase()];
+      if (!referenceId) {
+         logger.warn(`Failed to extract referenceId for ${configKey} using key field ${rootPkField} from ${rootTableName}`);
+         continue;
+      }
+
+      logger.info(`Using template ${configKey} referenceId=${referenceId} (keyField=${rootPkField})`);
+
+      // Determine the correct VBTYP_N for VBFA from the config map
+      const vbtypN = VBTYP_N_BY_OBJECT[followOnKey] || rule.vbtypN || 'J';
+
+      // 3. For each synthetic Sales Order, clone the header, overwrite keys, push to SAP
+      for (let orderIdx = 0; orderIdx < numToGenerate; orderIdx++) {
+         const rootSalesOrder = syntheticRootRecords[orderIdx];
+         if (!rootSalesOrder) continue;
+         
+         const salesOrderVbeln = rootSalesOrder.VBELN || rootSalesOrder.vbeln || Object.values(rootSalesOrder)[0];
+         if (!salesOrderVbeln) {
+            logger.warn(`Cannot determine VBELN for synthetic root record at index ${orderIdx} — skipping follow-on`);
+            continue;
+         }
+         
+         // Derive a deterministic follow-on VBELN that:
+         //   (a) is guaranteed unique per SO + follow-on type + iteration
+         //   (b) uses a TDE-specific prefix (99 + 8 digits) that does not collide
+         //       with real SAP document ranges (which use numbers like 80xx, 88xx etc.)
+         const soSuffix   = String(salesOrderVbeln).replace(/\D/g, '').slice(-6).padStart(6, '0');
+         const typeSuffix = String(followOnKey % 100).padStart(2, '0');
+         const idxSuffix  = String(orderIdx % 100).padStart(2, '0');
+         const followOnVbeln = ('99' + soSuffix + typeSuffix + idxSuffix).slice(0, 10);
+         
+         generatedFollowOnKeys.push({ field: rule.description || 'Follow-on', targetValue: followOnVbeln });
+
+         logger.info(`Synthesizing follow-on ${configKey}: salesOrder=${salesOrderVbeln} → followOn=${followOnVbeln}`);
+
+         // Clone ONLY the root header table from our randomDocs fetch.
+         // We bypass `fetchConfiguredTables` entirely because we don't need sub-tables
+         // (they cause duplicate POSNR crashes) and `fetchConfiguredTables` struggles
+         // with broken OBJECT_ID field mappings for some SAP SD objects.
+         const clonedTables = [];
+         const records = [];
+         
+         for (const r of randomDocs) {
+            const clonedRow = { ...r };
+            
+            // Stamp the new follow-on document number onto all key fields
+            for (const key of Object.keys(clonedRow)) {
+               const upperKey = key.toUpperCase();
+               if (upperKey === rootPkField.toUpperCase() || upperKey === 'VBELN') {
+                  clonedRow[key] = followOnVbeln;
+               }
+            }
+            
+            // Stamp predecessor references back to the synthetic Sales Order
+            if ('VGBEL' in clonedRow) clonedRow.VGBEL = salesOrderVbeln;
+            if ('vgbel' in clonedRow) clonedRow.vgbel = salesOrderVbeln;
+            if ('VGPOS' in clonedRow) clonedRow.VGPOS = '000000';
+            if ('vgpos' in clonedRow) clonedRow.vgpos = '000000';
+            if ('VBELV' in clonedRow) clonedRow.VBELV = salesOrderVbeln;
+            if ('vbelv' in clonedRow) clonedRow.vbelv = salesOrderVbeln;
+
+            records.push(clonedRow);
+         }
+         
+         if (records.length > 0) {
+            clonedTables.push({ table: rootTableName, records });
+         }
+
+         
+         // Push the cloned follow-on tables to SAP
+         for (const ct of clonedTables) {
+            try {
+               const pushResult = await pushTableDataWithClient(targetClient, targetSystem, ct.table, ct.records);
+               allTableResults.push({
+                  table: `${ct.table} [${configKey}]`,
+                  status: pushResult.succeeded > 0 ? 'SYNTHETIC_INSERTED' : 'FAILED',
+                  attempted: pushResult.attempted,
+                  succeeded: pushResult.succeeded
+               });
+            } catch (tableErr) {
+               logger.warn(`Failed to push follow-on table ${ct.table} for ${configKey}: ${tableErr.message}`);
+               allTableResults.push({
+                  table: `${ct.table} [${configKey}]`,
+                  status: 'FAILED',
+                  attempted: ct.records.length,
+                  succeeded: 0,
+                  error: tableErr.message
+               });
+            }
+         }
+         
+         // Write the VBFA document flow link: synthetic SO → new follow-on document
+         // Primary key: VBELV + POSNV + VBELN + POSNN (header-level = 000000)
+         // Note: We MUST supply a unique RUUID, otherwise SAP defaults it to "" and throws 
+         // a duplicate secondary key error on subsequent inserts.
+         // We only insert the header link (000000) because inserting an item link (000010)
+         // causes SAP GUI to crash looking for follow-on item records (LIPS/VBRP) that we don't clone.
+         const vbfaRecord = {
+            RUUID:    require('crypto').randomBytes(16).toString('base64'),
+            VBELV:    salesOrderVbeln,   // predecessor = the synthetic Sales Order
+            POSNV:    '000000',           // header-level link
+            VBELN:    followOnVbeln,      // successor  = the new follow-on document
+            POSNN:    '000000',           // header-level link
+            VBTYP_V:  'C',                // Sales Order document category
+            VBTYP_N:  vbtypN             // Follow-on document category (from config map)
+         };
+
+         try {
+            const vbfaResult = await pushTableDataWithClient(targetClient, targetSystem, 'VBFA', [vbfaRecord]);
+            if (vbfaResult.succeeded > 0) {
+               logger.info(`VBFA link inserted: ${salesOrderVbeln} (C) → ${followOnVbeln} (${vbtypN}) [${configKey}]`);
+               allTableResults.push({
+                  table: `VBFA [${configKey}]`,
+                  status: 'SYNTHETIC_INSERTED',
+                  attempted: 1,
+                  succeeded: 1
+               });
+            } else {
+               logger.warn(`VBFA insert returned 0 succeeded for ${salesOrderVbeln} → ${followOnVbeln}`);
+               allTableResults.push({ table: `VBFA [${configKey}]`, status: 'FAILED', attempted: 1, succeeded: 0 });
+            }
+         } catch (vbfaErr) {
+            // Log but do not crash — a duplicate VBFA key (e.g. re-run) is non-fatal
+            const isDuplicate = vbfaErr.message && vbfaErr.message.includes('same primary key');
+            if (isDuplicate) {
+               logger.warn(`VBFA link already exists for ${salesOrderVbeln} → ${followOnVbeln} — skipping duplicate`);
+            } else {
+               logger.warn(`VBFA insert failed for ${salesOrderVbeln} → ${followOnVbeln}: ${vbfaErr.message}`);
+            }
+            allTableResults.push({
+               table: `VBFA [${configKey}]`,
+               status: isDuplicate ? 'SKIPPED_DUPLICATE' : 'FAILED',
+               attempted: 1,
+               succeeded: 0,
+               error: vbfaErr.message
+            });
+         }
+      }
+
+    } catch (err) {
+      logger.warn(`Error generating follow-on ${followOnKey}: ${err.message}`);
+    }
+  }
+
+  return generatedFollowOnKeys;
+}
+
 module.exports = {
   previewTransfer,
   executeTransfer,
@@ -2254,3 +2490,4 @@ module.exports = {
   listRunHistory,
   generateSyntheticCsv
 };
+

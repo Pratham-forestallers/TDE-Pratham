@@ -116,7 +116,7 @@ if (objectConfig.SALES_DOCUMENT) {
       }
     ],
     whereClauseByTable: {
-      VBFA: "VBELV = '{OBJECT_ID}' OR VBELN = '{OBJECT_ID}'",
+      VBFA: "VBELV = '{OBJECT_ID}'",
       PRCD_ELEMENTS: "KNUMV = '{KNUMV}'"
     },
     regenerateFieldsByTable: {

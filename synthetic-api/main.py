@@ -22,6 +22,7 @@ class SynthesisRequest(BaseModel):
     sourceData: list = []
     baseOffset: Optional[int] = None
     maskPhoneNumbers: bool = True
+    optionalFollowons: list = []
 
 @app.get("/")
 def health_check():

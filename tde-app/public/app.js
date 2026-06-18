@@ -695,13 +695,17 @@ function getSyntheticSamplingPayload() {
 }
 
 function getFormPayload(synthesize = false) {
+  const selectedFollowons = Array.from(document.querySelectorAll('input[name="followonTarget"]:checked'))
+    .map(cb => parseInt(cb.value, 10));
+
   const base = {
     sourceSystem: elements.sourceSystem.value,
     targetSystem: elements.targetSystem.value,
     objectKey: elements.objectType.value,
     objectId: elements.objectId.value.trim(),
     synthesize: synthesize,
-    maskPhoneNumbers: elements.maskPhoneNumbers.checked
+    maskPhoneNumbers: elements.maskPhoneNumbers.checked,
+    optionalFollowons: selectedFollowons
   };
   if (synthesize) {
     Object.assign(base, getSyntheticSamplingPayload());
