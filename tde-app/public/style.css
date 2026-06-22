@@ -147,6 +147,37 @@ body {
   font-weight: 900;
   text-align: center;
   text-transform: uppercase;
+  transition: all var(--transition-spring);
+}
+
+.side-nav__item:hover:not(.active) {
+  background: var(--surface2);
+  border-color: var(--accent);
+  transform: translateY(-2px);
+}
+
+#newRunButton.active {
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.35);
+  box-shadow: 0 8px 24px rgba(20, 124, 255, 0.3);
+}
+
+#newRunButton.active:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 28px rgba(20, 124, 255, 0.4);
+}
+
+#anomaliesButton.active {
+  background: linear-gradient(135deg, #c0392b, #e74c3c);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.35);
+  box-shadow: 0 8px 24px rgba(192, 57, 43, 0.3);
+}
+
+#anomaliesButton.active:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 28px rgba(192, 57, 43, 0.4);
 }
 
 .history-panel {
@@ -332,6 +363,27 @@ h2 {
 
 .control-panel {
   padding: 22px;
+}
+
+/* Tab contents and transition animation */
+.tab-content {
+  display: none !important;
+}
+
+.tab-content.active {
+  display: block !important;
+  animation: tabEntrance 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes tabEntrance {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.995);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 fieldset {
@@ -847,6 +899,24 @@ pre {
   letter-spacing: 0.02em;
   text-transform: uppercase;
   margin-bottom: 16px;
+}
+
+/* ── Anomaly Form Layout ─────────────────────────────────────── */
+#anomalyForm fieldset {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+#anomalyForm .synthetic-options-panel {
+  border-color: rgba(192, 57, 43, 0.4);
+  background: linear-gradient(135deg,
+    rgba(192, 57, 43, 0.07) 0%,
+    rgba(231, 76, 60, 0.04) 100%);
+  box-shadow: 0 0 0 1px rgba(192, 57, 43, 0.15), var(--inner-highlight);
+}
+
+#anomalyForm .synthetic-options-panel legend {
+  color: #e74c3c;
 }
 
 .sample-sub-options {

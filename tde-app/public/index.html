@@ -22,6 +22,7 @@
 
       <nav class="side-nav" aria-label="Tools">
         <button id="newRunButton" class="side-nav__item active" type="button">New Run</button>
+        <button id="anomaliesButton" class="side-nav__item" type="button">Anomalies</button>
       </nav>
 
       <section class="history-panel" aria-label="Run history">
@@ -57,7 +58,7 @@
       </header>
 
       <section class="workspace">
-        <form id="transferForm" class="control-panel">
+        <form id="transferForm" class="control-panel tab-content active">
           <div class="form-row-2">
             <fieldset>
               <legend>System Settings</legend>
@@ -180,10 +181,71 @@
             <button id="runSyntheticButton" type="button" class="primary" style="background: linear-gradient(135deg, #6780B8, #46b4c8);">▶ Run Synthetic Transfer</button>
             <button id="downloadSyntheticButton" type="button" class="secondary" style="border: 1px solid #2ECC71; color: #2ECC71;" title="Generate synthetic data and download as ZIP">⬇ Download Synthetic ZIP</button>
           </section>
+        </form>
+
+        <form id="anomalyForm" class="control-panel tab-content">
+
+          <!-- Row 1: System Settings -->
+          <fieldset>
+            <legend>System Settings</legend>
+            <div class="form-row-2">
+              <label>
+                Source System
+                <select id="anomalySourceSystem" name="sourceSystem" required></select>
+              </label>
+              <label>
+                Target System
+                <select id="anomalyTargetSystem" name="targetSystem" required></select>
+              </label>
+            </div>
+          </fieldset>
+
+          <!-- Row 2: Object Type + Anomaly Type -->
+          <fieldset>
+            <legend>Object &amp; Anomaly Configuration</legend>
+            <div class="form-row-2">
+              <label>
+                Object Type
+                <select id="anomalyObjectType" name="objectType" required></select>
+              </label>
+              <label>
+                Anomaly Type
+                <select id="anomalyType" name="anomalyType" required>
+                  <option value="1">1 — Master Data &amp; Dependency Anomalies</option>
+                  <option value="2">2 — Pricing &amp; Financial Inconsistencies</option>
+                  <option value="3">3 — Date &amp; Chronological Anomalies</option>
+                  <option value="4">4 — Quantity &amp; Fulfillment Discrepancies</option>
+                  <option value="5">5 — Format &amp; Constraint Violations</option>
+                </select>
+              </label>
+            </div>
+          </fieldset>
+
+          <!-- Row 3: Generation Parameters -->
+          <fieldset class="synthetic-options-panel">
+            <legend>⚠️ Generation Parameters</legend>
+            <div class="form-row-2">
+              <label>
+                Reference Rows (N)
+                <input id="anomalyReferenceRows" name="referenceRows" type="number" min="1" max="1000" value="5" placeholder="5" required>
+              </label>
+              <label>
+                Rows to Generate
+                <input id="anomalyGenerateCount" name="generateCount" type="number" min="1" max="10000" value="5" placeholder="5" required>
+              </label>
+            </div>
+          </fieldset>
+
+          <!-- Actions -->
+          <section class="actions">
+            <button class="primary" type="submit" style="background: linear-gradient(135deg, #c0392b, #e74c3c); border-color: rgba(255,255,255,0.3); box-shadow: 0 10px 30px rgba(192,57,43,0.35); flex: 0 1 260px;">
+              ⚡ Generate Anomaly Data
+            </button>
+          </section>
 
         </form>
 
-        <section class="result-panel" aria-live="polite">
+        <section class="results-panel" id="resultsPanel" hidden aria-live="polite">
           <div class="result-header">
             <div>
               <p class="eyebrow">Results</p>

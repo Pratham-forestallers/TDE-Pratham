@@ -6,6 +6,7 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 
 const transferRoutes = require('./routes/transferRoutes');
+const anomalyRoutes = require('./routes/anomalyRoutes');
 const { errorHandler, notFoundHandler } = require('./utils/errorHandler');
 const logger = require('./utils/logger');
 const { getSystemClient, warmCsrfToken } = require('./services/odataService');
@@ -28,6 +29,7 @@ app.get('/health', (req, res) => {
 });
 
 app.use('/api', transferRoutes);
+app.use('/api/anomalies', anomalyRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

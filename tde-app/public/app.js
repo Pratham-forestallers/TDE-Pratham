@@ -12,12 +12,21 @@ const elements = {
   objectId: document.getElementById('objectId'),
   objectIdLabel: document.getElementById('objectIdLabel'),
   newRunButton: document.getElementById('newRunButton'),
+  anomaliesButton: document.getElementById('anomaliesButton'),
   previewButton: document.getElementById('previewButton'),
   synthesizeButton: document.getElementById('synthesizeButton'),
   runButton: document.getElementById('runButton'),
   runSyntheticButton: document.getElementById('runSyntheticButton'),
-
   downloadSyntheticButton: document.getElementById('downloadSyntheticButton'),
+  
+  // Anomaly UI elements
+  anomalyForm: document.getElementById('anomalyForm'),
+  anomalySourceSystem: document.getElementById('anomalySourceSystem'),
+  anomalyTargetSystem: document.getElementById('anomalyTargetSystem'),
+  anomalyObjectType: document.getElementById('anomalyObjectType'),
+  anomalyReferenceRows: document.getElementById('anomalyReferenceRows'),
+  anomalyGenerateCount: document.getElementById('anomalyGenerateCount'),
+  anomalyType: document.getElementById('anomalyType'),
   historyRefreshButton: document.getElementById('historyRefreshButton'),
   historyList: document.getElementById('historyList'),
   loadingIndicator: document.getElementById('loadingIndicator'),
@@ -38,7 +47,8 @@ const elements = {
   sampleRandomCount: document.getElementById('sampleRandomCount'),
   sampleRangeOptions: document.getElementById('sampleRangeOptions'),
   sampleRangeFrom: document.getElementById('sampleRangeFrom'),
-  sampleRangeTo: document.getElementById('sampleRangeTo')
+  sampleRangeTo: document.getElementById('sampleRangeTo'),
+  resultsPanel: document.getElementById('resultsPanel')
 };
 
 const themeStorageKey = 'tde-theme';
@@ -73,19 +83,20 @@ function initializeTheme() {
 function setProcessing(isProcessing) {
   state.processing = isProcessing;
   elements.loadingIndicator.hidden = !isProcessing;
-  updateActionState();
+  setFormState(isProcessing || !state.initialized);
 }
 
-function updateActionState() {
-  const disabled = state.processing || !state.initialized;
-  elements.previewButton.disabled = disabled;
-  elements.synthesizeButton.disabled = disabled;
-  elements.runButton.disabled = disabled;
-  elements.runSyntheticButton.disabled = disabled;
-
-  elements.downloadSyntheticButton.disabled = disabled;
+function setFormState(disabled) {
+  elements.transferForm.querySelectorAll('input, select, button').forEach(el => {
+    el.disabled = disabled;
+  });
+  elements.anomalyForm.querySelectorAll('input, select, button').forEach(el => {
+    el.disabled = disabled;
+  });
+  if (elements.downloadSyntheticButton) elements.downloadSyntheticButton.disabled = disabled;
   elements.historyRefreshButton.disabled = disabled;
   elements.newRunButton.disabled = disabled;
+  elements.anomaliesButton.disabled = disabled;
 }
 
 function setStatus(message, type = 'info') {
@@ -826,7 +837,23 @@ async function initialize() {
       (system) => `${system.key} - ${system.name}`
     );
     populateSelect(
+      elements.anomalySourceSystem,
+      systemsResponse.systems,
+      (system) => `${system.key} - ${system.name}`
+    );
+    populateSelect(
+      elements.anomalyTargetSystem,
+      systemsResponse.systems,
+      (system) => `${system.key} - ${system.name}`
+    );
+    populateSelect(
       elements.objectType,
+      objectTypesResponse.objectTypes,
+      (objectType) => objectType.description || objectType,
+      (objectType) => objectType.objectKey || objectType
+    );
+    populateSelect(
+      elements.anomalyObjectType,
       objectTypesResponse.objectTypes,
       (objectType) => objectType.description || objectType,
       (objectType) => objectType.objectKey || objectType
@@ -843,6 +870,7 @@ async function initialize() {
 
     if (elements.targetSystem.options.length > 1) {
       elements.targetSystem.selectedIndex = 1;
+      if(elements.anomalyTargetSystem) elements.anomalyTargetSystem.selectedIndex = 1;
     }
 
     elements.healthBadge.textContent = 'Online';
@@ -982,9 +1010,20 @@ elements.historyRefreshButton.addEventListener('click', () => {
 });
 
 elements.newRunButton.addEventListener('click', () => {
+  elements.newRunButton.classList.add('active');
+  elements.anomaliesButton.classList.remove('active');
+  elements.anomalyForm.classList.remove('active');
+  elements.transferForm.classList.add('active');
   startNewRun();
-  // Hide synthetic options panel on new run
   elements.syntheticOptionsPanel.hidden = true;
+});
+
+elements.anomaliesButton.addEventListener('click', () => {
+  elements.anomaliesButton.classList.add('active');
+  elements.newRunButton.classList.remove('active');
+  elements.transferForm.classList.remove('active');
+  elements.anomalyForm.classList.add('active');
+  elements.resultsPanel.hidden = true;
 });
 
 // Toggle sampling sub-option panels based on selected mode
@@ -1021,5 +1060,121 @@ function renderSyntheticInfo(payload) {
   elements.resultSummary.appendChild(section);
 }
 
+elements.anomalyForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+
+  const payload = {
+    sourceSystem: elements.anomalySourceSystem.value,
+    targetSystem: elements.anomalyTargetSystem.value,
+    objectType: elements.anomalyObjectType.value,
+    referenceRows: parseInt(elements.anomalyReferenceRows.value, 10),
+    generateCount: parseInt(elements.anomalyGenerateCount.value, 10),
+    anomalyType: parseInt(elements.anomalyType.value, 10)
+  };
+
+  setProcessing(true);
+  setStatus('Generating anomaly data, please wait...', 'info');
+
+  try {
+    const response = await fetch('/api/anomalies/run', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await response.json();
+    setProcessing(false);
+
+    if (data.success) {
+      const total = data.generatedRows;
+      const failed = (data.details || []).filter(r => r.status === 'Error').length;
+
+      setStatus(
+        `Anomaly generation complete -- ${total} record${total !== 1 ? 's' : ''} inserted into SAP${failed > 0 ? `, ${failed} failed` : ''}.`,
+        failed > 0 ? 'warning' : 'success'
+      );
+
+      // Reveal both the panel and the summary container
+      elements.resultsPanel.hidden = false;
+      elements.resultSummary.hidden = false;
+      elements.resultSummary.innerHTML = '';
+
+      // ——— Summary Stats ——————————————————————————————
+      const summarySection = document.createElement('section');
+      summarySection.className = 'summary-section synthetic-section';
+      summarySection.innerHTML = `
+        <div class="section-heading">Anomaly Generation Summary</div>
+        <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:1rem; margin-top:0.75rem; padding:1rem; background:rgba(192,57,43,0.08); border:1px solid rgba(192,57,43,0.3); border-radius:8px;">
+          <div style="text-align:center;">
+            <div style="font-size:2.2rem; font-weight:900; color:#e74c3c;">${total}</div>
+            <div style="color:var(--muted); font-size:0.8rem; margin-top:4px;">Records Inserted</div>
+          </div>
+          <div style="text-align:center;">
+            <div style="font-size:2.2rem; font-weight:900; color:#f39c12;">${failed}</div>
+            <div style="color:var(--muted); font-size:0.8rem; margin-top:4px;">Failed</div>
+          </div>
+          <div style="text-align:center;">
+            <div style="font-size:1.1rem; font-weight:700; color:#4ade80; letter-spacing:0.05em;">77... prefix</div>
+            <div style="color:var(--muted); font-size:0.8rem; margin-top:4px;">Anomaly ID Pattern</div>
+          </div>
+        </div>
+      `;
+      elements.resultSummary.appendChild(summarySection);
+
+      // ——— Per-record Table —————————————————————————————
+      if (data.details && data.details.length > 0) {
+        const tableSection = document.createElement('section');
+        tableSection.className = 'summary-section';
+
+        const tableHeading = document.createElement('div');
+        tableHeading.className = 'section-heading';
+        tableHeading.textContent = `Generated Records (${data.details.length})`;
+        tableSection.appendChild(tableHeading);
+
+        const table = document.createElement('table');
+        table.style.cssText = 'width:100%; border-collapse:collapse; margin-top:0.75rem; font-size:0.875rem;';
+        table.innerHTML = `
+          <thead>
+            <tr style="border-bottom:2px solid var(--border); color:var(--muted); text-transform:uppercase; font-size:0.72rem; letter-spacing:0.07em;">
+              <th style="text-align:left; padding:10px 14px;">#</th>
+              <th style="text-align:left; padding:10px 14px;">VBELN (Sales Document)</th>
+              <th style="text-align:left; padding:10px 14px;">Table</th>
+              <th style="text-align:left; padding:10px 14px;">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${(data.details).map((r, i) => `
+              <tr style="border-bottom:1px solid var(--border);">
+                <td style="padding:10px 14px; color:var(--muted); font-size:0.8rem;">${i + 1}</td>
+                <td style="padding:10px 14px; font-family:monospace; color:#4ade80; font-weight:700; font-size:0.95rem; letter-spacing:0.06em;">${r.vbeln}</td>
+                <td style="padding:10px 14px; color:var(--muted);">${r.table}</td>
+                <td style="padding:10px 14px;">
+                  <span style="color:${r.status === 'Success' ? '#4ade80' : '#e74c3c'}; font-weight:600;">
+                    ${r.status === 'Success' ? '[OK]' : '[ERR]'} ${r.status}
+                    ${r.error ? `<br><small style="color:var(--muted); font-weight:400;">${r.error}</small>` : ''}
+                  </span>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        `;
+        tableSection.appendChild(table);
+        elements.resultSummary.appendChild(tableSection);
+      }
+
+      // Scroll the results into view
+      elements.resultsPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    } else {
+      setStatus(`Generation Failed: ${data.error || 'Unknown error'}`, 'error');
+    }
+
+  } catch (err) {
+    setProcessing(false);
+    setStatus(`Error: ${err.message}`, 'error');
+  }
+});
+
 initializeTheme();
 initialize();
+
