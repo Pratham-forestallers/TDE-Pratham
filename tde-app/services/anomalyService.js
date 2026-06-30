@@ -8,6 +8,15 @@ function generateRandomAnomalyId() {
   return `77${suffix}`;
 }
 
+function toUppercaseKeys(record) {
+  if (!record || typeof record !== 'object') return record;
+  const uppercaseRecord = {};
+  for (const [key, value] of Object.entries(record)) {
+    uppercaseRecord[key.toUpperCase()] = value;
+  }
+  return uppercaseRecord;
+}
+
 async function generateAnomalies(payload) {
   const { sourceSystem, targetSystem, objectType, referenceRows, generateCount, anomalyType } = payload;
   
@@ -21,21 +30,36 @@ async function generateAnomalies(payload) {
   const targetClient = await getSystemClient(targetSystem);
   
   logger.info(`Fetching ${referenceRows} reference rows from VBAK on ${sourceSystem}...`);
-  const vbakRecords = await fetchTableDataWithClient(sourceClient, sourceSystem, 'VBAK', '__FETCH_ALL__', objectType, { rows: referenceRows });
+  // Filter out empty rows when fetching base reference records
+  const rawVbakRecords = await fetchTableDataWithClient(sourceClient, sourceSystem, 'VBAK', '__FETCH_ALL__', objectType, {
+    where: "vbeln <> ''",
+    rows: referenceRows
+  });
   
-  if (!vbakRecords || vbakRecords.length === 0) {
+  if (!rawVbakRecords || rawVbakRecords.length === 0) {
     throw new Error('No reference records found in the source system to clone.');
   }
 
+  const vbakRecords = rawVbakRecords.map(toUppercaseKeys);
+
   const generatedRows = [];
   const generatedIds = [];
+  const labeledData = [];
   
   // Also fetch VBAP items if we need them (e.g. Quantity discrepancies)
   const vbelnList = vbakRecords.map(r => `'${r.VBELN}'`).join(', ');
-  const vbapRecords = await fetchTableDataWithClient(sourceClient, sourceSystem, 'VBAP', '__FETCH_ALL__', objectType, {
-    where: `VBELN IN (${vbelnList})`,
+  const rawVbapRecords = await fetchTableDataWithClient(sourceClient, sourceSystem, 'VBAP', '__FETCH_ALL__', objectType, {
+    where: `vbeln IN (${vbelnList})`,
     rows: 1000 // Just to get all items
   });
+  const vbapRecords = rawVbapRecords.map(toUppercaseKeys);
+
+  // Fetch VBPA partners (Sold-to, Ship-to, etc.)
+  const rawVbpaRecords = await fetchTableDataWithClient(sourceClient, sourceSystem, 'VBPA', '__FETCH_ALL__', objectType, {
+    where: `vbeln IN (${vbelnList})`,
+    rows: 1000
+  });
+  const vbpaRecords = rawVbpaRecords.map(toUppercaseKeys);
 
   for (let i = 0; i < generateCount; i++) {
     // Pick a random reference record
@@ -54,6 +78,15 @@ async function generateAnomalies(payload) {
       delete clonedItem.__metadata;
       clonedItem.VBELN = newVbeln;
       return clonedItem;
+    });
+
+    // Clone related partners
+    const basePartners = vbpaRecords.filter(r => r.VBELN === baseRecord.VBELN);
+    const clonedVbpaList = basePartners.map(partner => {
+      const clonedPartner = JSON.parse(JSON.stringify(partner));
+      delete clonedPartner.__metadata;
+      clonedPartner.VBELN = newVbeln;
+      return clonedPartner;
     });
 
     // --- APPLY ANOMALY INJECTION ---
@@ -85,6 +118,25 @@ async function generateAnomalies(payload) {
         logger.warn(`Unknown anomaly type ${anomalyType}, skipping injection.`);
     }
 
+    const anomalyLabels = {
+      1: "Master Data & Dependency",
+      2: "Pricing & Financial",
+      3: "Date & Chronological",
+      4: "Quantity & Fulfillment",
+      5: "Format & Constraint"
+    };
+
+    labeledData.push({
+      anomalyLabel: anomalyLabels[anomalyType] || "Unknown",
+      anomalyId: anomalyType,
+      vbeln: newVbeln,
+      tables: {
+        VBAK: [clonedVbak],
+        VBAP: clonedVbapList,
+        VBPA: clonedVbpaList
+      }
+    });
+
     // Push VBAK
     try {
       const pushVbakResult = await pushTableDataWithClient(targetClient, targetSystem, 'VBAK', [clonedVbak]);
@@ -97,6 +149,11 @@ async function generateAnomalies(payload) {
           if (clonedVbapList.length > 0) {
             await pushTableDataWithClient(targetClient, targetSystem, 'VBAP', clonedVbapList);
           }
+        }
+
+        // Push VBPA (Partners)
+        if (clonedVbpaList.length > 0) {
+          await pushTableDataWithClient(targetClient, targetSystem, 'VBPA', clonedVbpaList);
         }
       } else {
         throw new Error('Failed to insert VBAK record via pushTableDataWithClient');
@@ -116,10 +173,118 @@ async function generateAnomalies(payload) {
       sourceValue: 'N/A',
       targetValue: id,
       numberRangeObject: 'Anomaly Generation'
-    }))
+    })),
+    labeledData
+  };
+}
+
+async function generateMixedAnomalies(payload) {
+  const { sourceSystem, objectType, rowCount } = payload;
+  
+  if (!sourceSystem) throw new Error('Source system is required.');
+
+  const sourceClient = await getSystemClient(sourceSystem);
+  
+  logger.info(`Fetching reference rows from VBAK on ${sourceSystem} for mixed generation...`);
+  const rawVbakRecords = await fetchTableDataWithClient(sourceClient, sourceSystem, 'VBAK', '__FETCH_ALL__', objectType, {
+    where: "vbeln <> ''",
+    rows: Math.min(rowCount, 100) // fetch up to 100 references
+  });
+  
+  if (!rawVbakRecords || rawVbakRecords.length === 0) {
+    throw new Error('No reference records found in the source system to clone.');
+  }
+  const vbakRecords = rawVbakRecords.map(toUppercaseKeys);
+
+  const vbelnList = vbakRecords.map(r => `'${r.VBELN}'`).join(', ');
+  const rawVbapRecords = await fetchTableDataWithClient(sourceClient, sourceSystem, 'VBAP', '__FETCH_ALL__', objectType, {
+    where: `vbeln IN (${vbelnList})`,
+    rows: 1000
+  });
+  const vbapRecords = rawVbapRecords.map(toUppercaseKeys);
+
+  const rawVbpaRecords = await fetchTableDataWithClient(sourceClient, sourceSystem, 'VBPA', '__FETCH_ALL__', objectType, {
+    where: `vbeln IN (${vbelnList})`,
+    rows: 1000
+  });
+  const vbpaRecords = rawVbpaRecords.map(toUppercaseKeys);
+
+  const labeledData = [];
+  const anomalyLabels = {
+    1: "Master Data & Dependency",
+    2: "Pricing & Financial",
+    3: "Date & Chronological",
+    4: "Quantity & Fulfillment",
+    5: "Format & Constraint"
+  };
+
+  for (let i = 0; i < rowCount; i++) {
+    const baseRecord = vbakRecords[i % vbakRecords.length];
+    const newVbeln = generateRandomAnomalyId();
+    const anomalyType = (i % 5) + 1; // 1 to 5 evenly mixed
+    
+    const clonedVbak = JSON.parse(JSON.stringify(baseRecord));
+    delete clonedVbak.__metadata;
+    clonedVbak.VBELN = newVbeln;
+    
+    const baseItems = vbapRecords.filter(r => r.VBELN === baseRecord.VBELN);
+    const clonedVbapList = baseItems.map(item => {
+      const clonedItem = JSON.parse(JSON.stringify(item));
+      delete clonedItem.__metadata;
+      clonedItem.VBELN = newVbeln;
+      return clonedItem;
+    });
+
+    const basePartners = vbpaRecords.filter(r => r.VBELN === baseRecord.VBELN);
+    const clonedVbpaList = basePartners.map(partner => {
+      const clonedPartner = JSON.parse(JSON.stringify(partner));
+      delete clonedPartner.__metadata;
+      clonedPartner.VBELN = newVbeln;
+      return clonedPartner;
+    });
+
+    switch (anomalyType) {
+      case 1: 
+        clonedVbak.KUNNR = '9999999999'; 
+        clonedVbak.VKORG = ''; 
+        break;
+      case 2: 
+        clonedVbak.NETWR = '-5000.00'; 
+        clonedVbak.WAERK = 'XXX'; 
+        break;
+      case 3: 
+        clonedVbak.VDATU = '19800101'; 
+        clonedVbak.ERDAT = '20991231'; 
+        break;
+      case 4: 
+        if (clonedVbapList.length > 0) clonedVbapList[0].KWMENG = '0.500'; 
+        break;
+      case 5: 
+        clonedVbak.BSTNK = 'A'.repeat(100); 
+        clonedVbak.AUART = 'XXXXXX'; 
+        break;
+    }
+
+    labeledData.push({
+      anomalyLabel: anomalyLabels[anomalyType] || "Unknown",
+      anomalyId: anomalyType,
+      vbeln: newVbeln,
+      tables: {
+        VBAK: [clonedVbak],
+        VBAP: clonedVbapList,
+        VBPA: clonedVbpaList
+      }
+    });
+  }
+
+  return {
+    success: true,
+    generatedRows: rowCount,
+    labeledData
   };
 }
 
 module.exports = {
-  generateAnomalies
+  generateAnomalies,
+  generateMixedAnomalies
 };

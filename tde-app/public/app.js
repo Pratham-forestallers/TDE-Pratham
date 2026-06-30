@@ -33,6 +33,7 @@ const elements = {
   statusMessage: document.getElementById('statusMessage'),
   resultSummary: document.getElementById('resultSummary'),
   resultOutput: document.getElementById('resultOutput'),
+  downloadAnomalyData: document.getElementById('downloadAnomalyData'),
   healthBadge: document.getElementById('healthBadge'),
   themeToggle: document.getElementById('themeToggle'),
   themeToggleLabel: document.getElementById('themeToggleLabel'),
@@ -1161,6 +1162,8 @@ elements.anomalyForm.addEventListener('submit', async (event) => {
         tableSection.appendChild(table);
         elements.resultSummary.appendChild(tableSection);
       }
+      
+      // (Download button is now standalone)
 
       // Scroll the results into view
       elements.resultsPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -1174,6 +1177,57 @@ elements.anomalyForm.addEventListener('submit', async (event) => {
     setStatus(`Error: ${err.message}`, 'error');
   }
 });
+
+if (elements.downloadAnomalyData) {
+  elements.downloadAnomalyData.addEventListener('click', async () => {
+    const rowCountInput = prompt('How many rows of mixed anomaly data would you like to generate for training?', '10');
+    if (!rowCountInput) return;
+    
+    const rowCount = parseInt(rowCountInput, 10);
+    if (isNaN(rowCount) || rowCount <= 0) {
+      alert('Please enter a valid positive number.');
+      return;
+    }
+
+    const payload = {
+      sourceSystem: elements.anomalySourceSystem.value,
+      objectType: elements.anomalyObjectType.value,
+      rowCount: rowCount
+    };
+
+    const originalText = elements.downloadAnomalyData.innerText;
+    elements.downloadAnomalyData.innerText = '⏳ Generating...';
+    elements.downloadAnomalyData.disabled = true;
+
+    try {
+      const response = await fetch('/api/anomalies/generate-mix', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await response.json();
+
+      if (data.success && data.labeledData) {
+        const blob = new Blob([JSON.stringify(data.labeledData, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `mixed_anomaly_data_${new Date().getTime()}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } else {
+        alert('Failed to generate mixed data: ' + (data.error || 'Unknown error'));
+      }
+    } catch (err) {
+      alert('Error calling generation API: ' + err.message);
+    } finally {
+      elements.downloadAnomalyData.innerText = originalText;
+      elements.downloadAnomalyData.disabled = false;
+    }
+  });
+}
 
 initializeTheme();
 initialize();
